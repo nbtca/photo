@@ -564,7 +564,6 @@ export default function PhotoLarge({
                         focal={shouldShareFocalLength
                           ? photo.focalLength
                           : undefined}
-                        prefetch={prefetchRelatedLinks}
                       />}
                     {ALLOW_PUBLIC_DOWNLOADS && 
                       <DownloadButton 
