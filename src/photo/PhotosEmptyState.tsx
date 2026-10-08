@@ -1,15 +1,9 @@
 import Container from '@/components/Container';
 import AppGrid from '@/components/AppGrid';
-import {
-  IS_APP_READY,
-  PRESERVE_ORIGINAL_UPLOADS,
-} from '@/app/config';
-import AdminAppConfiguration from '@/admin/config/AdminAppConfiguration';
+import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { clsx } from 'clsx/lite';
 import { HiOutlinePhotograph } from 'react-icons/hi';
 import SignInOrUploadClient from '@/admin/SignInOrUploadClient';
-import Link from 'next/link';
-import { PATH_ADMIN_CONFIGURATION } from '@/app/path';
 import { getAppText } from '@/i18n/state/server';
 
 export default async function PhotosEmptyState() {
@@ -31,27 +25,13 @@ export default async function PhotosEmptyState() {
             'font-bold text-2xl',
             'text-gray-700 dark:text-gray-200',
           )}>
-            {!IS_APP_READY
-              ? appText.onboarding.setupIncomplete
-              : appText.onboarding.setupComplete}
+            {appText.onboarding.setupComplete}
           </div>
-          {!IS_APP_READY
-            ? <AdminAppConfiguration simplifiedView />
-            : <div className="max-w-md text-center space-y-6">
-              <SignInOrUploadClient
-                shouldResize={!PRESERVE_ORIGINAL_UPLOADS}
-              />
-              <div>
-                {appText.onboarding.setupConfig}
-                {' '}
-                <Link
-                  href={PATH_ADMIN_CONFIGURATION}
-                  className="text-main hover:underline"
-                >
-                  /admin/configuration
-                </Link>
-              </div>
-            </div>}
+          <div className="max-w-md text-center space-y-6">
+            <SignInOrUploadClient
+              shouldResize={!PRESERVE_ORIGINAL_UPLOADS}
+            />
+          </div>
         </Container>
       }
     />

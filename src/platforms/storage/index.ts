@@ -1,47 +1,6 @@
-import {
-  VERCEL_BLOB_BASE_URL,
-  vercelBlobCopy,
-  vercelBlobDelete,
-  vercelBlobList,
-  vercelBlobPut,
-  vercelBlobUploadFromClient,
-} from './vercel-blob';
-import {
-  AWS_S3_BASE_URL,
-  awsS3Copy,
-  awsS3Delete,
-  awsS3GetSignedUrl,
-  awsS3List,
-  awsS3Put,
-  isUrlFromAwsS3,
-} from './aws-s3';
-import {
-  CURRENT_STORAGE,
-  HAS_AWS_S3_STORAGE,
-  HAS_VERCEL_BLOB_STORAGE,
-  HAS_CLOUDFLARE_R2_STORAGE,
-  HAS_MINIO_STORAGE,
-} from '@/app/config';
+import { Unauthorized, rpc } from '@spa/data';
 import { generateNanoid } from '@/utility/nanoid';
-import {
-  CLOUDFLARE_R2_BASE_URL_PUBLIC,
-  cloudflareR2Copy,
-  cloudflareR2Delete,
-  cloudflareR2GetSignedUrl,
-  cloudflareR2List,
-  cloudflareR2Put,
-  isUrlFromCloudflareR2,
-} from './cloudflare-r2';
-import {
-  MINIO_BASE_URL,
-  minioCopy,
-  minioDelete,
-  minioList,
-  minioPut,
-  isUrlFromMinio,
-  minioGetSignedUrl,
-} from './minio';
-import { PATH_API_PRESIGNED_URL } from '@/app/path';
+import { formatBytes } from '@/utility/number';
 
 export type StorageListItem = {
   url: string
@@ -62,6 +21,8 @@ export type ClientUploadOptions = {
   onProgress?: (loaded: number, total: number) => void
   abortSignal?: AbortSignal
 };
+
+const QUOTA_MESSAGE = '存储空间已用完，请先删除一些旧照片';
 
 export const generateStorageId = () => generateNanoid(16);
 
@@ -90,249 +51,78 @@ export const getFileNamePartsFromStorageUrl = (url: string) => {
   };
 };
 
-export const labelForStorage = (type: StorageType): string => {
-  switch (type) {
-    case 'vercel-blob': return 'Vercel Blob';
-    case 'cloudflare-r2': return 'Cloudflare R2';
-    case 'aws-s3': return 'AWS S3';
-    case 'minio': return 'MinIO';
-  }
-};
+export const labelForStorage = (_type: StorageType) => 'Cloudflare R2';
+export const baseUrlForStorage = (_type: StorageType) => '/img';
+export const storageTypeFromUrl = (_url: string): StorageType =>
+  'cloudflare-r2';
 
-export const baseUrlForStorage = (type: StorageType) => {
-  switch (type) {
-    case 'vercel-blob': return VERCEL_BLOB_BASE_URL;
-    case 'cloudflare-r2': return CLOUDFLARE_R2_BASE_URL_PUBLIC;
-    case 'aws-s3': return AWS_S3_BASE_URL;
-    case 'minio': return MINIO_BASE_URL;
-  }
-};
-
-export const storageTypeFromUrl = (url: string): StorageType => {
-  if (isUrlFromCloudflareR2(url)) {
-    return 'cloudflare-r2';
-  } else if (isUrlFromAwsS3(url)) {
-    return 'aws-s3';
-  } else if (isUrlFromMinio(url)) {
-    return 'minio';
-  } else {
-    return 'vercel-blob';
-  }
-};
-
-const putBlobWithProgress = (
-  url: string,
-  file: File | Blob,
-  {
-    onProgress,
-    abortSignal,
-  }: ClientUploadOptions = {},
-) =>
-  new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('PUT', url);
-    xhr.upload.onprogress = event => {
-      if (event.lengthComputable) {
-        onProgress?.(event.loaded, event.total);
-      }
-    };
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve();
-      } else {
-        reject(new Error(`Upload failed with status ${xhr.status}`));
-      }
-    };
-    xhr.onerror = () => reject(new Error('Upload failed'));
-    xhr.onabort = () =>
-      reject(new DOMException('The operation was aborted.', 'AbortError'));
-
-    if (abortSignal?.aborted) {
-      reject(new DOMException('The operation was aborted.', 'AbortError'));
-      return;
-    }
-    const onAbort = () => xhr.abort();
-    abortSignal?.addEventListener('abort', onAbort);
-    xhr.onloadend = () => abortSignal?.removeEventListener('abort', onAbort);
-    xhr.send(file);
-  });
-
-export const uploadFromClientViaPresignedUrl = async (
-  file: File | Blob,
+const put = (
+  file: Blob,
   fileName: string,
-  options?: ClientUploadOptions,
-) => {
-  const url = await fetch(
-    `${PATH_API_PRESIGNED_URL}/${fileName}`,
-    { signal: options?.abortSignal },
-  )
-    .then((response) => response.text());
-
-  await putBlobWithProgress(url, file, options);
-
-  return `${baseUrlForStorage(CURRENT_STORAGE)}/${fileName}`;
-};
+  { onProgress, abortSignal }: ClientUploadOptions = {},
+) => new Promise<string>((resolve, reject) => {
+  const xhr = new XMLHttpRequest();
+  xhr.open('PUT', `/img/${fileName}`);
+  xhr.upload.onprogress = event => {
+    if (event.lengthComputable) { onProgress?.(event.loaded, event.total); }
+  };
+  xhr.onload = () => {
+    if (xhr.status === 201) {
+      resolve(`/img/${fileName}`);
+    } else if (xhr.status === 401) {
+      window.dispatchEvent(new Event('unauthorized'));
+      reject(new Unauthorized());
+    } else {
+      reject(new Error(xhr.status === 507
+        ? QUOTA_MESSAGE
+        : `Upload failed (${xhr.status})`));
+    }
+  };
+  xhr.onerror = () => reject(new Error('Upload failed'));
+  xhr.onabort = () =>
+    reject(new DOMException('The operation was aborted.', 'AbortError'));
+  abortSignal?.addEventListener('abort', () => xhr.abort());
+  xhr.send(file);
+});
 
 export const uploadFileFromClient = async (
   file: File | Blob,
-  _fileName: string,
+  fileName: string,
   extension: string,
   addRandomSuffix = true,
   options?: ClientUploadOptions,
-) => {
-  const fileName = addRandomSuffix
-    ? `${_fileName}-${generateStorageId()}.${extension}`
-    : `${_fileName}.${extension}`;
+) => put(
+  file,
+  addRandomSuffix
+    ? `${fileName}-${generateStorageId()}.${extension}`
+    : `${fileName}.${extension}`,
+  options,
+);
 
-  return (
-    CURRENT_STORAGE === 'cloudflare-r2' ||
-    CURRENT_STORAGE === 'aws-s3' ||
-    CURRENT_STORAGE === 'minio'
-  )
-    ? uploadFromClientViaPresignedUrl(file, fileName, options)
-    : vercelBlobUploadFromClient(file, fileName, options);
+export const putFile = (file: Uint8Array, fileName: string) =>
+  put(new Blob([file as BlobPart]), fileName);
+
+export const deleteFile = async (url: string) => {
+  const response = await fetch(url, { method: 'DELETE' });
+  if (!response.ok) { throw new Error(`Delete failed (${response.status})`); }
 };
 
-export const putFile = (
-  file: Buffer,
-  fileName: string,
-) => {
-  switch (CURRENT_STORAGE) {
-    case 'vercel-blob':
-      return vercelBlobPut(file, fileName);
-    case 'cloudflare-r2':
-      return cloudflareR2Put(file, fileName);
-    case 'aws-s3':
-      return awsS3Put(file, fileName);
-    case 'minio':
-      return minioPut(file, fileName);
-  }
-};
-
-export const copyFile = (
-  originUrl: string,
-  destinationFileName: string,
-): Promise<string> => {
-  const { fileName } = getFileNamePartsFromStorageUrl(originUrl);
-  switch (storageTypeFromUrl(originUrl)) {
-    case 'vercel-blob':
-      return vercelBlobCopy(
-        originUrl,
-        destinationFileName,
-        false,
-      );
-    case 'cloudflare-r2':
-      return cloudflareR2Copy(
-        fileName,
-        destinationFileName,
-        false,
-      );
-    case 'aws-s3':
-      return awsS3Copy(
-        originUrl,
-        destinationFileName,
-        false,
-      );
-    case 'minio':
-      return minioCopy(
-        fileName,
-        destinationFileName,
-        false,
-      );
-  }
-};
-
-export const deleteFile = (url: string) => {
-  const { fileName } = getFileNamePartsFromStorageUrl(url);
-  switch (storageTypeFromUrl(url)) {
-    case 'vercel-blob':
-      return vercelBlobDelete(url);
-    case 'cloudflare-r2':
-      return cloudflareR2Delete(fileName);
-    case 'aws-s3':
-      return awsS3Delete(fileName);
-    case 'minio':
-      return minioDelete(fileName);
-  }
-};
+export const getStorageUrlsForPrefix = async (prefix = '') =>
+  rpc<{ url: string, fileName: string, uploadedAt: string, bytes: number }[]>(
+    'getStorageUrlsForPrefix',
+    prefix,
+  ).then((files): StorageListResponse =>
+    files.map(({ uploadedAt, bytes, ...file }) => ({
+      ...file,
+      uploadedAt: new Date(uploadedAt),
+      size: formatBytes(bytes),
+    })));
 
 export const deleteFilesWithPrefix = async (prefix: string) => {
   const urls = await getStorageUrlsForPrefix(prefix);
   return Promise.all(urls.map(({ url }) => deleteFile(url)));
 };
 
-export const moveFile = async (
-  originUrl: string,
-  destinationFileName: string,
-) => {
-  const url = await copyFile(originUrl, destinationFileName);
-  // If successful, delete original file
-  if (url) { await deleteFile(originUrl); }
-  return url;
-};
+export const getSignedUrlForUrl = async (url: string) => url;
 
-export const getStorageUrlsForPrefix = async (prefix = '') => {
-  const urls: StorageListResponse = [];
-
-  if (HAS_VERCEL_BLOB_STORAGE) {
-    urls.push(...await vercelBlobList(prefix)
-      .catch(() => []));
-  }
-  if (HAS_AWS_S3_STORAGE) {
-    urls.push(...await awsS3List(prefix)
-      .catch(() => []));
-  }
-  if (HAS_CLOUDFLARE_R2_STORAGE) {
-    urls.push(...await cloudflareR2List(prefix)
-      .catch(() => []));
-  }
-  if (HAS_MINIO_STORAGE) {
-    urls.push(...await minioList(prefix)
-      .catch(() => []));
-  }
-
-  return urls
-    .sort((a, b) => {
-      if (!a.uploadedAt) { return 1; }
-      if (!b.uploadedAt) { return -1; }
-      return b.uploadedAt.getTime() - a.uploadedAt.getTime();
-    });
-};
-
-// Used primarily for uploading files
-export const getSignedUrlForKey = async (
-  key: string,
-  method: 'GET' | 'PUT',
-  expiresIn = 3600,
-) => {
-  switch (CURRENT_STORAGE) {
-    case 'cloudflare-r2':
-      return cloudflareR2GetSignedUrl(key, method, expiresIn);
-    case 'minio':
-      return minioGetSignedUrl(key, method, expiresIn);
-    default:
-      return awsS3GetSignedUrl(key, method, expiresIn);
-  }
-};
-
-// Used for safely fetching files via presigned URLs
-export const getSignedUrlForUrl = (
-  url: string,
-  method: 'GET' | 'PUT',
-  expiresIn = 3600,
-) => {
-  const { fileName } = getFileNamePartsFromStorageUrl(url);
-  switch (storageTypeFromUrl(url)) {
-    case 'cloudflare-r2':
-      return cloudflareR2GetSignedUrl(fileName, method, expiresIn);
-    case 'minio':
-      return minioGetSignedUrl(fileName, method, expiresIn);
-    case 'aws-s3':
-      return awsS3GetSignedUrl(fileName, method, expiresIn);
-    default:
-      return url;
-  }
-};
-
-export const testStorageConnection = () =>
-  getStorageUrlsForPrefix();
+export const testStorageConnection = async () => {};

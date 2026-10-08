@@ -1,8 +1,5 @@
-import {
-  getPhotosMetaCached,
-  getPhotosMostRecentUpdateCached,
-  getUniqueRecipesCached,
-} from '@/photo/cache';
+import { use } from 'react';
+import { getUniqueRecipesCached } from '@/photo/cache';
 import {
   PATH_ADMIN_ALBUMS,
   PATH_ADMIN_PHOTOS,
@@ -10,62 +7,54 @@ import {
   PATH_ADMIN_TAGS,
   PATH_ADMIN_UPLOADS,
 } from '@/app/path';
-import AdminNavClient from './AdminNavClient';
+import AdminNavClient from '@/admin/AdminNavClient';
 import { getAppText } from '@/i18n/state/server';
+import { useDataVersion } from '@spa/next/navigation';
 
-export default async function AdminNav() {
-  const [
-    countPhotos,
-    countRecipes,
-    mostRecentPhotoUpdateTime,
-  ] = await Promise.all([
-    getPhotosMetaCached({ hidden: 'include' })
-      .then(({ count }) => count)
-      .catch(() => 0),
-    getUniqueRecipesCached().then(recipes => recipes.length)
-      .catch(() => 0),
-    getPhotosMostRecentUpdateCached().catch(() => undefined),
-  ]);
+const load = () => Promise.all([
+  fetch('/api/me').then(response => response.json() as Promise<{
+    admin: boolean
+  }>),
+  getUniqueRecipesCached().then(recipes => recipes.length).catch(() => 0),
+  getAppText(),
+]);
 
-  const appText = await getAppText();
+let loaded: { version: number, result: ReturnType<typeof load> } | undefined;
 
-  const includeInsights = countPhotos > 0;
+// Albums, tags and recipes are shared by everyone, so only admins manage them.
+export default function AdminNav() {
+  const version = useDataVersion();
+  if (loaded?.version !== version) { loaded = { version, result: load() }; }
+  const [{ admin }, countRecipes, appText] = use(loaded.result);
 
-  // Photos
   const items = [{
     label: appText.photo.photoPlural,
     href: PATH_ADMIN_PHOTOS,
-  }];
-
-  // Uploads
-  items.push({
+  }, {
     label: appText.admin.uploadPlural,
     href: PATH_ADMIN_UPLOADS,
-  });
+  }];
 
-  // Albums
-  items.push({
-    label: appText.category.albumPlural,
-    href: PATH_ADMIN_ALBUMS,
-  });
-
-  // Tags
-  items.push({
-    label: appText.category.tagPlural,
-    href: PATH_ADMIN_TAGS,
-  });
-
-  // Recipes
-  if (countRecipes > 0) { items.push({
-    label: appText.category.recipePlural,
-    href: PATH_ADMIN_RECIPES,
-  }); }
+  if (admin) {
+    items.push({
+      label: appText.category.albumPlural,
+      href: PATH_ADMIN_ALBUMS,
+    }, {
+      label: appText.category.tagPlural,
+      href: PATH_ADMIN_TAGS,
+    });
+    if (countRecipes > 0) {
+      items.push({
+        label: appText.category.recipePlural,
+        href: PATH_ADMIN_RECIPES,
+      });
+    }
+  }
 
   return (
     <AdminNavClient {...{
       items,
-      mostRecentPhotoUpdateTime,
-      includeInsights,
+      includeInsights: false,
     }} />
   );
 }

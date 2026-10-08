@@ -26,13 +26,10 @@ import {
 } from '@/db';
 import {
   PhotoFormData,
-  convertFormDataToPhotoDbInsert,
-  convertPhotoToFormData,
 } from './form';
 import { redirect } from 'next/navigation';
 import {
   deleteFile,
-  getFileNamePartsFromStorageUrl,
 } from '@/platforms/storage';
 import {
   revalidateAdminPaths,
@@ -58,7 +55,7 @@ import {
   propagateRecipeTitleIfNecessary,
 } from './server';
 import { TAG_FAVS, Tags, isPhotoFav, isTagFavs } from '@/tag';
-import { convertPhotoToPhotoDbInsert, Photo, PhotoDbInsert } from '.';
+import { convertPhotoToPhotoDbInsert, Photo } from '.';
 import { runAuthenticatedAdminServerAction } from '@/auth/server';
 import { AiImageQuery, getAiImageQuery, getAiTextFieldsToGenerate } from './ai';
 import { streamOpenAiImageQuery } from '@/platforms/openai';
@@ -72,7 +69,6 @@ import { generateAiImageQueries } from './ai/server';
 import { createStreamableValue } from '@ai-sdk/rsc';
 import {
   convertUploadToPhoto,
-  storeOptimizedPhotosForUrl,
 } from './storage/server';
 import { UrlAddStatus } from '@/admin/AdminUploadsClient';
 import { after } from 'next/server';
@@ -93,7 +89,6 @@ import {
   upgradeTagToAlbum,
 } from '@/album/server';
 import { addPhotoAlbumIds } from '@/album/query';
-import { getStorageUrlsForPhoto } from './storage';
 import type { VisibilityValue } from './visibility';
 import {
   COMMAND_K_PHOTO_LIMIT,
@@ -541,56 +536,6 @@ export const renamePhotoRecipeGloballyAction = async (formData: FormData) =>
     }
   });
 
-export const replacePhotoStorageAction = async (
-  photoId: string,
-  updatedStorageUrl: string,
-) =>
-  runAuthenticatedAdminServerAction(async () => {
-    const photo = await getPhoto(photoId, true);
-    
-    if (photo) {
-      const {
-        fileExtension: extension,
-      } = getFileNamePartsFromStorageUrl(updatedStorageUrl);
-
-      const {
-        formDataFromExif,
-      } = await extractImageDataFromBlobPath(updatedStorageUrl, {
-        generateBlurData: BLUR_ENABLED,
-      });
-
-      let imageFields: Partial<PhotoDbInsert> = {};
-      if (formDataFromExif) {
-        const photoDbInsert = convertFormDataToPhotoDbInsert(formDataFromExif);
-        imageFields = {
-          blurData: photoDbInsert.blurData,
-          width: photoDbInsert.width,
-          height: photoDbInsert.height,
-          aspectRatio: photoDbInsert.aspectRatio,
-          colorData: photoDbInsert.colorData,
-          colorSort: photoDbInsert.colorSort,
-        };
-      }
-
-      await updatePhoto({
-        ...convertPhotoToPhotoDbInsert({
-          ...photo,
-          url: updatedStorageUrl,
-          extension,
-        }),
-        ...imageFields,
-      });
-
-      await storeOptimizedPhotosForUrl(updatedStorageUrl);
-
-      const existingStorageUrls = await getStorageUrlsForPhoto(photo)
-        .then(urls => urls.map(({ url }) => url));
-      await Promise.all(existingStorageUrls.map(deleteFile));
-
-      revalidatePhoto(photo.id);
-    }
-  });
-
 export const deleteUploadsAction = async (urls: string[]) =>
   runAuthenticatedAdminServerAction(async () => {
     await Promise.all(urls.map(url => deleteFile(url)));
@@ -598,140 +543,6 @@ export const deleteUploadsAction = async (urls: string[]) =>
       // Only refresh state when deleting multiple uploads
       revalidateAdminPaths();
     }
-  });
-
-// Accessed from admin photo edit page
-// will not update blur data
-export const getExifDataAction = async (
-  url: string,
-): Promise<Partial<PhotoFormData>> =>
-  runAuthenticatedAdminServerAction(async () => {
-    const { formDataFromExif } = await extractImageDataFromBlobPath(url);
-    if (formDataFromExif) {
-      return formDataFromExif;
-    } else {
-      return {};
-    }
-  });
-
-// Accessed from admin photo table, will:
-// - update EXIF data
-// - anonymize storage url if necessary
-// - strip GPS data if necessary
-// - update blur data (or destroy if blur is disabled)
-// - generate AI text data, if enabled, and auto-generated fields are empty
-// - recalculate color data/sort if AI or color sort is enabled
-export const syncPhotoAction = async (
-  photoId: string, {
-    isBatch,
-    syncMode = 'auto',
-  }: {
-    isBatch?: boolean,
-    syncMode?: 'auto' | 'only-missing' | 'overwrite',
-    updateMode?: boolean,
-  } = {},
-) =>
-  runAuthenticatedAdminServerAction(async () => {
-    const photo = await getPhoto(photoId ?? '', true);
-
-    if (photo) {
-      const {
-        formDataFromExif,
-        imageResizedBase64,
-        shouldStripGpsData,
-        fileBytes,
-      } = await extractImageDataFromBlobPath(photo.url, {
-        includeInitialPhotoFields: false,
-        generateBlurData: BLUR_ENABLED,
-        generateResizedImage: AI_CONTENT_GENERATION_ENABLED,
-        updateColorFields: AI_CONTENT_GENERATION_ENABLED,
-      });
-
-      const uniqueTags = await getUniqueTags();
-
-      let urlToDelete: string | undefined;
-      if (formDataFromExif) {
-        if (await shouldBackfillPhotoStorage(photo) || shouldStripGpsData) {
-          // Anonymize storage url on update if necessary by
-          // re-running image upload transfer logic
-          const url = await convertUploadToPhoto({
-            uploadUrl: photo.url,
-            fileBytes,
-            shouldStripGpsData,
-            shouldDeleteOrigin: false,
-          });
-          if (url) {
-            urlToDelete = photo.url;
-            photo.url = url;
-          }
-        }
-
-        const {
-          title: atTitle,
-          caption: aiCaption,
-          tags: aiTags,
-          semantic: aiSemanticDescription,
-        } = await generateAiImageQueries({
-          imageBase64: imageResizedBase64,
-          textFieldsToGenerate: photo.updateStatus?.isMissingAiTextFields ?? [],
-          isBatch,
-          uniqueTags,
-        });
-
-        const formDataFromPhoto = convertPhotoToFormData(photo);
-
-        Object.entries(formDataFromExif).forEach(([field, value]) => {
-          const existingValue =
-            formDataFromPhoto[field as keyof PhotoFormData];
-          switch (syncMode) {
-            case 'auto':
-              // Remove all fields already present in formDataFromPhoto
-              if (existingValue !== undefined) {
-                delete formDataFromExif[field as keyof PhotoFormData];
-              }
-              break;
-            case 'only-missing':
-              // Avoid overwriting fields with null data
-              if (existingValue !== undefined && !value) {
-                delete formDataFromExif[field as keyof PhotoFormData];
-              }
-              break;
-          }
-        });
-
-        const photoFormDbInsert =
-          await convertFormDataToPhotoDbInsertAndLookupRecipeTitle({
-            ...formDataFromPhoto,
-            ...formDataFromExif,
-            ...!BLUR_ENABLED && { blurData: undefined },
-            ...!photo.title && { title: atTitle },
-            ...!photo.caption && { caption: aiCaption },
-            ...photo.tags.length === 0 && { tags: aiTags },
-            ...!photo.semanticDescription &&
-              { semanticDescription: aiSemanticDescription },
-          });
-
-        await updatePhoto(photoFormDbInsert)
-          .then(async () => {
-            if (urlToDelete) { await deleteFile(urlToDelete); }
-          });
-
-        revalidateAllKeysAndPaths();
-      }
-    }
-  });
-
-export const syncPhotosAction = async (photosToSync: {
-  photoId: string,
-  onlySyncColorData?: boolean,
-}[]) =>
-  runAuthenticatedAdminServerAction(async () => {
-    for (const { photoId, onlySyncColorData } of photosToSync) {
-      await (onlySyncColorData
-        ? storeColorDataForPhotoAction(photoId)
-        : syncPhotoAction(photoId, { isBatch: true }));
-    }
-    revalidateAllKeysAndPaths();
   });
 
 export const clearCacheAction = async () =>
@@ -826,11 +637,6 @@ export const batchUpdatePhotoTitlesAction = async (
   );
   revalidateAllKeysAndPaths();
 });
-
-export const getPhotoAction = async (photoId: string) =>
-  runAuthenticatedAdminServerAction(async () =>
-    getPhoto(photoId, true),
-  );
 
 // Public/Private actions
 

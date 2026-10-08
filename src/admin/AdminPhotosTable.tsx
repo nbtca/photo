@@ -11,7 +11,6 @@ import PhotoDate from '@/photo/PhotoDate';
 import EditButton from './EditButton';
 import { useAppState } from '@/app/AppState';
 import { RevalidatePhoto } from '@/photo/InfinitePhotoScroll';
-import PhotoSyncButton from './PhotoSyncButton';
 import { Timezone } from '@/utility/timezone';
 import { photoNeedsToBeUpdated } from '@/photo/update';
 import PhotoVisibilityIcon from '@/photo/visibility/PhotoVisibilityIcon';
@@ -142,20 +141,6 @@ export default function AdminPhotosTable({
           )}>
             {canEdit &&
               <EditButton path={pathForAdminPhotoEdit(photo)} />}
-            {canSync &&
-              <PhotoSyncButton
-                photo={photo}
-                onSyncComplete={invalidateSwr}
-                isSyncingExternal={photoIdsSyncing.includes(photo.id)}
-                hasAiContentGeneration={hasAiContentGeneration}
-                disabled={photoIdsSyncing.length > 0}
-                className={opacityForPhotoId(photo.id)}
-                shouldConfirm
-                shouldToast
-                shouldScrollIntoViewOnExternalSync={
-                  shouldScrollIntoViewOnExternalSync}
-                updateMode={updateMode}
-              />}
             {debugColorData &&
               <SyncColorButton photoId={photo.id} />}
             <AdminPhotoMenu

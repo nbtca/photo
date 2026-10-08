@@ -40,77 +40,34 @@ const asyncComponents = (): Plugin => ({
   },
 });
 
-// Modules that only run on the server upstream, mapped to browser stand-ins
-// that call the Worker. Exports a stand-in omits reject when called.
-const REPLACED_MODULES: Record<string, string> = {
-  'photo/query.ts': 'server/photo-query.ts',
-  'album/query.ts': 'server/album-query.ts',
-  'admin/actions.ts': 'server/admin-actions.ts',
-  'admin/AdminNav.tsx': 'AdminNav.tsx',
-  'i18n/state/AppTextProvider.tsx': 'AppTextProvider.tsx',
-  'platforms/storage/index.ts': 'server/storage.ts',
-  'platforms/next-image.ts': 'server/next-image.ts',
-  'platforms/redis.ts': 'server/redis.ts',
-  'platforms/postgres.ts': 'server/postgres.ts',
-  'platforms/openai/index.ts': 'server/openai.ts',
-  'auth/server.ts': 'server/auth-server.ts',
-  'photo/storage/server.ts': 'server/photo-storage.ts',
-  'photo/color/server.ts': 'server/photo-color.ts',
-  'photo/ai/server.ts': 'server/photo-ai.ts',
-};
-
 const EXPORT_NAME = /^export (?:const|let|function|async function|class) (\w+)/gm;
 const ORIGINAL = '?original';
 
-const exportNames = (code: string) =>
-  [...code.matchAll(EXPORT_NAME)].map(match => match[1]);
-
-const replaceServerModules = (): Plugin => {
-  const replacements = new Map(Object.entries(REPLACED_MODULES)
-    .map(([original, replacement]) => [src(original), spa(replacement)]));
-  const originals = new Map([...replacements].map(([a, b]) => [b, a]));
-  return {
-    name: 'replace-server-modules',
-    enforce: 'pre',
-    async resolveId(source, importer, options) {
-      if (!importer) { return; }
-      if (source.endsWith(ORIGINAL)) { return source; }
-      const resolved =
-        await this.resolve(source, importer, { ...options, skipSelf: true });
-      return resolved && replacements.get(resolved.id);
-    },
-    load(id) {
-      if (id.endsWith(ORIGINAL)) {
-        return fs.readFileSync(id.slice(0, -ORIGINAL.length), 'utf8');
-      }
-      const original = originals.get(id);
-      if (original) {
-        const code = fs.readFileSync(id, 'utf8');
-        const provided = new Set(exportNames(code));
+// Server actions run in the browser. Each one is wrapped so that the
+// redirects it throws become navigation.
+const serverActions = (): Plugin => ({
+  name: 'server-actions',
+  enforce: 'pre',
+  resolveId(source) {
+    if (source.endsWith(ORIGINAL)) { return source; }
+  },
+  load(id) {
+    if (id.endsWith(ORIGINAL)) {
+      return fs.readFileSync(id.slice(0, -ORIGINAL.length), 'utf8');
+    }
+    if (/\/src\/.*\.tsx?$/.test(id)) {
+      const code = fs.readFileSync(id, 'utf8');
+      if (/^\s*['"]use server['"]/.test(code)) {
         return [
-          code,
-          ...exportNames(fs.readFileSync(original, 'utf8'))
-            .filter(name => !provided.has(name))
-            .map(name => `export const ${name} = (...args) => ` +
-              `Promise.reject(new Error('${name} is not available'));`),
+          `import * as original from ${JSON.stringify(id + ORIGINAL)};`,
+          'import { serverAction } from \'@spa/action\';',
+          ...[...code.matchAll(EXPORT_NAME)].map(([, name]) =>
+            `export const ${name} = serverAction(original.${name});`),
         ].join('\n');
       }
-      // Server actions run in the browser. The wrapper turns the redirects
-      // they throw into navigation.
-      if (/\/(src|app)\/.*\.tsx?$/.test(id)) {
-        const code = fs.readFileSync(id, 'utf8');
-        if (/^\s*['"]use server['"]/.test(code)) {
-          return [
-            `import * as original from ${JSON.stringify(id + ORIGINAL)};`,
-            'import { serverAction } from \'@spa/action\';',
-            ...exportNames(code).map(name =>
-              `export const ${name} = serverAction(original.${name});`),
-          ].join('\n');
-        }
-      }
-    },
-  };
-};
+    }
+  },
+});
 
 const next = (specifier: string, file: string) => ({
   find: new RegExp(`^${specifier.replace(/[/.]/g, '\\$&')}$`),
@@ -118,7 +75,7 @@ const next = (specifier: string, file: string) => ({
 });
 
 export default defineConfig({
-  plugins: [replaceServerModules(), asyncComponents(), react()],
+  plugins: [serverActions(), asyncComponents(), react()],
   define: {
     'process.env': JSON.stringify(ENV),
     'process.version': JSON.stringify(''),
@@ -130,6 +87,7 @@ export default defineConfig({
       next('next/navigation', 'next/navigation.ts'),
       next('next/cache', 'next/cache.ts'),
       next('next/headers', 'next/headers.ts'),
+      next('next/form', 'next/form.tsx'),
       next('next/server', 'next/server.ts'),
       next('sharp', 'server/sharp.ts'),
       next('@ai-sdk/rsc', 'server/streamable.ts'),

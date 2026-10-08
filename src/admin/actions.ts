@@ -1,135 +1,50 @@
-'use server';
-
-import { runAuthenticatedAdminServerAction } from '@/auth/server';
-import { testRedisConnection } from '@/platforms/redis';
-import { testOpenAiConnection } from '@/platforms/openai';
-import { testDatabaseConnection } from '@/platforms/postgres';
-import { testStorageConnection } from '@/platforms/storage';
-import { testGooglePlacesConnection } from '@/platforms/google-places';
-import { APP_CONFIGURATION } from '@/app/config';
-import { getStorageUploadUrlsNoStore } from '@/platforms/storage/cache';
-import {
-  getGitHubMetaForCurrentApp,
-  indicatorStatusForSignificantInsights,
-} from './insights';
-import {
-  getPhotosInNeedOfUpdateCountCached,
-  getPhotosMetaCached,
-  getUniqueRecipesCached,
-  getUniqueTagsCached,
-} from '@/photo/cache';
+import { getPhotosMetaCached, getUniqueRecipesCached, getUniqueTagsCached } from '@/photo/cache';
 import { getAlbumsWithMetaCached } from '@/album/cache';
+import { getStorageUploadUrlsNoStore } from '@/platforms/storage/cache';
 import { revalidatePath } from 'next/cache';
 
 export type AdminData = Awaited<ReturnType<typeof getAdminDataAction>>;
 
 export const revalidateAdminAfterUploadAction = async () =>
-  runAuthenticatedAdminServerAction(async () => {
-    // Update upload count in admin nav
-    revalidatePath('/admin', 'layout');
-  });
+  revalidatePath('/admin', 'layout');
 
-export const getAdminDataAction = async () =>
-  runAuthenticatedAdminServerAction(async () => {
-    const [
-      photosCount,
-      photosCountHidden,
-      photosCountNeedSync,
-      codeMeta,
-      uploadsCount,
-      albumsCount,
-      tagsCount,
-      recipesCount,
-    ] = await Promise.all([
-      getPhotosMetaCached()
-        .then(({ count }) => count)
-        .catch(() => 0),
-      getPhotosMetaCached({ hidden: 'only' })
-        .then(({ count }) => count)
-        .catch(() => 0),
-      getPhotosInNeedOfUpdateCountCached(),
-      getGitHubMetaForCurrentApp(),
-      getStorageUploadUrlsNoStore()
-        .then(urls => urls.length)
-        .catch(e => {
-          console.error(`Error getting blob upload urls: ${e}`);
-          return 0;
-        }),
-      getAlbumsWithMetaCached()
-        .then(albums => albums.length)
-        .catch(() => 0),
-      getUniqueTagsCached()
-        .then(tags => tags.length)
-        .catch(() => 0),
-      getUniqueRecipesCached()
-        .then(recipes => recipes.length)
-        .catch(() => 0),
-    ]);
+const count = <T,>(promise: Promise<T[]>) =>
+  promise.then(items => items.length).catch(() => 0);
 
-    const insightsIndicatorStatus = indicatorStatusForSignificantInsights({
-      codeMeta,
-      photosCountNeedSync,
-    });
+export const getAdminDataAction = async () => {
+  const { admin }: { admin: boolean } =
+    await fetch('/api/me').then(response => response.json());
 
-    const photosCountTotal = (
-      photosCount !== undefined &&
-      photosCountHidden !== undefined
-    )
-      ? photosCount + photosCountHidden
-      : undefined;
+  const [
+    photosCountTotal,
+    photosCountHidden,
+    uploadsCount,
+    albumsCount,
+    tagsCount,
+    recipesCount,
+  ] = await Promise.all([
+    getPhotosMetaCached({ hidden: 'include' })
+      .then(({ count }) => count)
+      .catch(() => 0),
+    getPhotosMetaCached({ hidden: 'only' })
+      .then(({ count }) => count)
+      .catch(() => 0),
+    count(getStorageUploadUrlsNoStore()),
+    count(getAlbumsWithMetaCached()),
+    count(getUniqueTagsCached()),
+    count(getUniqueRecipesCached()),
+  ]);
 
-    return {
-      photosCount,
-      photosCountHidden,
-      photosCountNeedSync,
-      photosCountTotal,
-      uploadsCount,
-      albumsCount,
-      tagsCount,
-      recipesCount,
-      insightsIndicatorStatus,
-    } as const;
-  });
-
-const scanForError = (
-  shouldCheck: boolean,
-  promise: () => Promise<any>,
-): Promise<string> =>
-  shouldCheck
-    ? promise()
-      .then(() => '')
-      .catch(error => error.message)
-    : Promise.resolve('');
-
-export const testConnectionsAction = async () =>
-  runAuthenticatedAdminServerAction(async () => {
-    const {
-      hasDatabase,
-      hasStorageProvider,
-      hasRedisStorage,
-      hasLocationServices,
-      isAiContentGenerationEnabled,
-    } = APP_CONFIGURATION;
-
-    const [
-      databaseError,
-      storageError,
-      redisError,
-      aiError,
-      locationError,
-    ] = await Promise.all([
-      scanForError(hasDatabase, testDatabaseConnection),
-      scanForError(hasStorageProvider, testStorageConnection),
-      scanForError(hasRedisStorage, testRedisConnection),
-      scanForError(isAiContentGenerationEnabled, testOpenAiConnection),
-      scanForError(hasLocationServices, testGooglePlacesConnection),
-    ]);
-
-    return {
-      databaseError,
-      storageError,
-      redisError,
-      aiError,
-      locationError,
-    };
-  });
+  return {
+    photosCount: photosCountTotal - photosCountHidden,
+    photosCountHidden,
+    photosCountNeedSync: 0,
+    photosCountTotal,
+    uploadsCount,
+    // Albums, tags and recipes are shared, so only admins manage them
+    albumsCount: admin ? albumsCount : 0,
+    tagsCount: admin ? tagsCount : 0,
+    recipesCount: admin ? recipesCount : 0,
+    insightsIndicatorStatus: undefined,
+  } as const;
+};

@@ -196,7 +196,7 @@ export const TEXT: I18N = {
     deletePhotosFailure: '删除 {{quantity}} 时出错',
   },
   onboarding: {
-    setupComplete: '设置完成！',
+    setupComplete: '还没有照片',
     setupIncomplete: '完成设置',
     setupSignIn: '登录以上传照片',
     setupFirstPhoto: '添加您的第一张照片',

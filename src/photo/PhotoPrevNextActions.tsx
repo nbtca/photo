@@ -18,7 +18,6 @@ import useNavigateOrRunActionWithToast
   from '@/components/useNavigateOrRunActionWithToast';
 import {
   deletePhotoAction,
-  syncPhotoAction,
   toggleFavoritePhotoAction,
 } from './actions';
 import { isPhotoFav } from '@/tag';
@@ -30,7 +29,6 @@ import {
 import { downloadFileFromBrowser } from '@/utility/url';
 import useKeydownHandler from '@/utility/useKeydownHandler';
 import { KEY_COMMANDS } from './key-commands';
-import { syncPhotoConfirmText } from '@/admin/confirm';
 import { useAppText } from '@/i18n/state/client';
 
 const ANIMATION_LEFT: AnimationConfig = { type: 'left', duration: 0.3 };
@@ -79,13 +77,6 @@ export default function PhotoPrevNextActions({
   const unfavoritePhoto = useNavigateOrRunActionWithToast({
     pathOrAction: toggleFavorite,
     toastMessage: `Unfavoriting ${photoTitle} ...`,
-  });
-
-  const syncPhoto = useNavigateOrRunActionWithToast({
-    pathOrAction: useCallback(() => {
-      if (photo?.id) { return syncPhotoAction(photo.id); }
-    }, [photo]),
-    toastMessage: `Syncing ${photoTitle} ...`,
   });
 
   const deletePhoto = useNavigateOrRunActionWithToast({
@@ -160,15 +151,6 @@ export default function PhotoPrevNextActions({
             downloadFileFromBrowser(downloadUrl, downloadFileName);
           }
           break;
-        case KEY_COMMANDS.sync:
-          if (
-            isUserSignedIn &&
-            photo &&
-            window.confirm(syncPhotoConfirmText(photo, hasAiContentGeneration))
-          ) {
-            syncPhoto();
-          }
-          break;
       };
     }
   }, [
@@ -182,7 +164,6 @@ export default function PhotoPrevNextActions({
     unfavoritePhoto,
     downloadUrl,
     downloadFileName,
-    syncPhoto,
     deletePhoto,
     hasAiContentGeneration,
   ]);

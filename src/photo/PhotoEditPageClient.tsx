@@ -11,7 +11,6 @@ import PhotoForm from './form/PhotoForm';
 import { Tags } from '@/tag';
 import AiButton from './ai/AiButton';
 import usePhotoFormParent from './form/usePhotoFormParent';
-import ExifCaptureButton from '@/admin/ExifCaptureButton';
 import { useState } from 'react';
 import { Recipes } from '@/recipe';
 import { Films } from '@/film';
@@ -64,7 +63,7 @@ export default function PhotoEditPageClient({
     imageThumbnailBase64,
   });
 
-  const [updatedExifData, setUpdatedExifData] =
+  const [updatedExifData] =
     useState<Partial<PhotoFormData>>();
 
   return (
@@ -83,10 +82,6 @@ export default function PhotoEditPageClient({
               shouldConfirm: shouldConfirmAiTextGeneration,
               tooltip: 'Generate AI text for all fields',
             }} />}
-          <ExifCaptureButton
-            photoUrl={photo.url}
-            onSync={setUpdatedExifData}
-          />
         </div>}
       isLoading={pending}
     >
