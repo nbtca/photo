@@ -9,23 +9,19 @@ import {
 } from '@/app/path';
 import AdminNavClient from '@/admin/AdminNavClient';
 import { getAppText } from '@/i18n/state/server';
-import { useDataVersion } from '@spa/next/navigation';
+import { unstable_cache } from 'next/cache';
 
-const load = () => Promise.all([
+const load = unstable_cache(() => Promise.all([
   fetch('/api/me').then(response => response.json() as Promise<{
     admin: boolean
   }>),
   getUniqueRecipesCached().then(recipes => recipes.length).catch(() => 0),
   getAppText(),
-]);
-
-let loaded: { version: number, result: ReturnType<typeof load> } | undefined;
+]));
 
 // Albums, tags and recipes are shared by everyone, so only admins manage them.
 export default function AdminNav() {
-  const version = useDataVersion();
-  if (loaded?.version !== version) { loaded = { version, result: load() }; }
-  const [{ admin }, countRecipes, appText] = use(loaded.result);
+  const [{ admin }, countRecipes, appText] = use(load());
 
   const items = [{
     label: appText.photo.photoPlural,

@@ -51,9 +51,9 @@ export class RedirectError extends Error {
   constructor(public path: string) { super(`Redirect to ${path}`); }
 }
 
-export const redirect = (path: string): never => {
+export function redirect(path: string): never {
   throw new RedirectError(path);
-};
+}
 
 export function Redirect({ path }: { path: string }) {
   const router = useRouter();

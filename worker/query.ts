@@ -1,6 +1,6 @@
-import type { AppEnv, Session } from './auth'
+import type { AppEnv, Session } from './auth';
 
-type Value = string | number
+type Value = string | number;
 
 interface Options {
   sortBy?: string
@@ -26,12 +26,12 @@ interface Options {
   photoIds?: string[]
 }
 
-type Row = Record<string, unknown>
+type Row = Record<string, unknown>;
 
-const DEFAULT_LIMIT = 100
-const MAX_LIMIT = 2000
-const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now'"
-const NEWEST = '(SELECT MAX(created_at) FROM photos)'
+const DEFAULT_LIMIT = 100;
+const MAX_LIMIT = 2000;
+const NOW = 'strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\'';
+const NEWEST = '(SELECT MAX(created_at) FROM photos)';
 
 // Mirrors `parameterize` in src/utility/string.ts.
 export const slug = (value: string) =>
@@ -39,146 +39,146 @@ export const slug = (value: string) =>
     .trim()
     .replaceAll(/[\s_–—+&|]/g, '-')
     .replaceAll(/['"!@#$%^*()=[\]{};:/?,<>\\`~]/g, '')
-    .toLocaleLowerCase()
+    .toLocaleLowerCase();
 
-const parse = (value: unknown) => (typeof value === 'string' ? JSON.parse(value) : null)
+const parse = (value: unknown) => (typeof value === 'string' ? JSON.parse(value) : null);
 
 export const present =
   (session: Session) =>
-  ({
-    owner_sub,
-    make_slug,
-    model_slug,
-    lens_make_slug,
-    lens_model_slug,
-    ...row
-  }: Row): Row => ({
-    ...row,
-    tags: parse(row.tags),
-    recipe_data: parse(row.recipe_data),
-    color_data: parse(row.color_data),
-    hidden: !!row.hidden,
-    exclude_from_feeds: !!row.exclude_from_feeds,
-    editable: session.admin || owner_sub === session.sub,
-  })
+    ({
+      owner_sub,
+      make_slug,
+      model_slug,
+      lens_make_slug,
+      lens_model_slug,
+      ...row
+    }: Row): Row => ({
+      ...row,
+      tags: parse(row.tags),
+      recipe_data: parse(row.recipe_data),
+      color_data: parse(row.color_data),
+      hidden: !!row.hidden,
+      exclude_from_feeds: !!row.exclude_from_feeds,
+      editable: session.admin || owner_sub === session.sub,
+    });
 
 export function conditions(options: Options, session: Session) {
-  const wheres = ['1 = 1']
-  const values: Value[] = []
+  const wheres = ['1 = 1'];
+  const values: Value[] = [];
   const where = (clause: string, ...bound: Value[]) => {
-    wheres.push(clause)
-    values.push(...bound)
-  }
+    wheres.push(clause);
+    values.push(...bound);
+  };
 
-  const hidden = options.hidden ?? 'exclude'
-  if (hidden === 'exclude') where('p.hidden = 0')
-  if (hidden === 'only') where('p.hidden = 1')
-  if (hidden !== 'exclude' && !session.admin) where('p.owner_sub = ?', session.sub)
+  const hidden = options.hidden ?? 'exclude';
+  if (hidden === 'exclude') where('p.hidden = 0');
+  if (hidden === 'only') where('p.hidden = 1');
+  if (hidden !== 'exclude' && !session.admin) where('p.owner_sub = ?', session.sub);
 
-  if (options.excludeFromFeeds) where('p.exclude_from_feeds = 0')
-  if (options.takenBefore) where('p.taken_at < ?', options.takenBefore)
-  if (options.takenAfterInclusive) where('p.taken_at >= ?', options.takenAfterInclusive)
-  if (options.updatedBefore) where('p.updated_at < ?', options.updatedBefore)
+  if (options.excludeFromFeeds) where('p.exclude_from_feeds = 0');
+  if (options.takenBefore) where('p.taken_at < ?', options.takenBefore);
+  if (options.takenAfterInclusive) where('p.taken_at >= ?', options.takenAfterInclusive);
+  if (options.updatedBefore) where('p.updated_at < ?', options.updatedBefore);
   if (options.query) {
     where(
-      "(COALESCE(p.title, '') || ' ' || COALESCE(p.caption, '') || ' ' || COALESCE(p.semantic_description, '')) LIKE ?",
+      '(COALESCE(p.title, \'\') || \' \' || COALESCE(p.caption, \'\') || \' \' || COALESCE(p.semantic_description, \'\')) LIKE ?',
       `%${options.query}%`,
-    )
+    );
   }
-  if (options.maximumAspectRatio) where('p.aspect_ratio <= ?', options.maximumAspectRatio)
+  if (options.maximumAspectRatio) where('p.aspect_ratio <= ?', options.maximumAspectRatio);
   if (options.recent) {
-    where(`${NEWEST} >= ${NOW}, '-14 days')`)
-    where(`p.created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', ${NEWEST}, '-7 days')`)
+    where(`${NEWEST} >= ${NOW}, '-14 days')`);
+    where(`p.created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', ${NEWEST}, '-7 days')`);
   }
-  if (options.year) where("strftime('%Y', p.taken_at) = ?", String(options.year))
-  if (options.camera?.make) where('p.make_slug = ?', slug(options.camera.make))
-  if (options.camera?.model) where('p.model_slug = ?', slug(options.camera.model))
-  if (options.lens?.make) where('p.lens_make_slug = ?', slug(options.lens.make))
+  if (options.year) where('strftime(\'%Y\', p.taken_at) = ?', String(options.year));
+  if (options.camera?.make) where('p.make_slug = ?', slug(options.camera.make));
+  if (options.camera?.model) where('p.model_slug = ?', slug(options.camera.model));
+  if (options.lens?.make) where('p.lens_make_slug = ?', slug(options.lens.make));
   if (options.lens?.model) {
-    where('p.lens_model_slug = ?', slug(options.lens.model))
-    if (!options.lens.make) where('p.lens_make IS NULL')
+    where('p.lens_model_slug = ?', slug(options.lens.model));
+    if (!options.lens.make) where('p.lens_make IS NULL');
   }
-  if (options.album?.id) where('ap.album_id = ?', options.album.id)
+  if (options.album?.id) where('ap.album_id = ?', options.album.id);
   if (options.tag) {
-    where('EXISTS (SELECT 1 FROM json_each(p.tags) WHERE value = ?)', options.tag)
+    where('EXISTS (SELECT 1 FROM json_each(p.tags) WHERE value = ?)', options.tag);
   }
-  if (options.film) where('p.film = ?', options.film)
-  if (options.recipe) where('p.recipe_title = ?', options.recipe)
+  if (options.film) where('p.film = ?', options.film);
+  if (options.recipe) where('p.recipe_title = ?', options.recipe);
   if (options.focal !== undefined && options.focal !== null) {
-    where('p.focal_length = ?', options.focal)
+    where('p.focal_length = ?', options.focal);
   }
   if (options.photoIds?.length) {
-    where(`p.id IN (${options.photoIds.map(() => '?').join(', ')})`, ...options.photoIds)
+    where(`p.id IN (${options.photoIds.map(() => '?').join(', ')})`, ...options.photoIds);
   }
 
   return {
     from: `FROM photos p${options.album?.id ? ' JOIN album_photo ap ON ap.photo_id = p.id' : ''} WHERE ${wheres.join(' AND ')}`,
     values,
-  }
+  };
 }
 
 const limitOf = ({ limit = DEFAULT_LIMIT }: Options) =>
-  Math.max(1, Math.min(MAX_LIMIT, Math.floor(Number(limit)) || DEFAULT_LIMIT))
+  Math.max(1, Math.min(MAX_LIMIT, Math.floor(Number(limit)) || DEFAULT_LIMIT));
 
 function orderBy(options: Options) {
-  const priority = options.sortWithPriority ? 'p.priority_order ASC NULLS LAST, ' : ''
+  const priority = options.sortWithPriority ? 'p.priority_order ASC NULLS LAST, ' : '';
   switch (options.sortBy) {
     case 'takenAtAsc':
-      return `ORDER BY ${priority}p.taken_at ASC`
+      return `ORDER BY ${priority}p.taken_at ASC`;
     case 'createdAt':
-      return `ORDER BY ${priority}p.created_at DESC`
+      return `ORDER BY ${priority}p.created_at DESC`;
     case 'createdAtAsc':
-      return `ORDER BY ${priority}p.created_at ASC`
+      return `ORDER BY ${priority}p.created_at ASC`;
     case 'color':
-      return `ORDER BY ${priority}p.color_sort DESC, p.taken_at DESC`
+      return `ORDER BY ${priority}p.color_sort DESC, p.taken_at DESC`;
     case 'colorAsc':
-      return `ORDER BY ${priority}p.color_sort ASC, p.taken_at ASC`
+      return `ORDER BY ${priority}p.color_sort ASC, p.taken_at ASC`;
     case 'random': {
-      const stride = Math.max(2, limitOf(options) * 2)
-      return `ORDER BY (ROW_NUMBER() OVER (ORDER BY p.taken_at DESC, p.id) - 1) % ${stride}, p.taken_at DESC, p.id`
+      const stride = Math.max(2, limitOf(options) * 2);
+      return `ORDER BY (ROW_NUMBER() OVER (ORDER BY p.taken_at DESC, p.id) - 1) % ${stride}, p.taken_at DESC, p.id`;
     }
     default:
-      return `ORDER BY ${priority}p.taken_at DESC`
+      return `ORDER BY ${priority}p.taken_at DESC`;
   }
 }
 
 export const all = async <T = Row>(env: AppEnv, sql: string, values: Value[] = []) =>
-  (await env.DB.prepare(sql).bind(...values).all<T>()).results
+  (await env.DB.prepare(sql).bind(...values).all<T>()).results;
 
-const VISIBLE = 'hidden = 0'
-const COUNTED = 'COUNT(*) AS count, MAX(updated_at) AS last_modified'
+const VISIBLE = 'hidden = 0';
+const COUNTED = 'COUNT(*) AS count, MAX(updated_at) AS last_modified';
 
-export type Handler = (env: AppEnv, session: Session, ...args: any[]) => Promise<unknown>
+export type Handler = (env: AppEnv, session: Session, ...args: any[]) => Promise<unknown>;
 
 export const queries: Record<string, Handler> = {
   async getPhotos(env, session, options: Options = {}) {
-    const { from, values } = conditions(options, session)
+    const { from, values } = conditions(options, session);
     const rows = await all(
       env,
       `SELECT p.* ${from} ${orderBy(options)} LIMIT ? OFFSET ?`,
       [...values, limitOf(options), Math.max(0, Math.floor(Number(options.offset)) || 0)],
-    )
-    return rows.map(present(session))
+    );
+    return rows.map(present(session));
   },
 
   async getPhotoIds(env, session, options: Options = {}) {
-    const { from, values } = conditions(options, session)
+    const { from, values } = conditions(options, session);
     const rows = await all<{ id: string }>(
       env,
       `SELECT p.id ${from} ${orderBy(options)} LIMIT ? OFFSET ?`,
       [...values, limitOf(options), Math.max(0, Math.floor(Number(options.offset)) || 0)],
-    )
-    return rows.map(({ id }) => id)
+    );
+    return rows.map(({ id }) => id);
   },
 
   async getPhotoCount(env, session, options: Options = {}) {
-    const { from, values } = conditions(options, session)
-    const [{ count }] = await all<{ count: number }>(env, `SELECT COUNT(*) AS count ${from}`, values)
-    return count
+    const { from, values } = conditions(options, session);
+    const [{ count }] = await all<{ count: number }>(env, `SELECT COUNT(*) AS count ${from}`, values);
+    return count;
   },
 
   async getPhotosNearId(env, session, photoId: string, options: Options = {}) {
-    const { from, values } = conditions(options, session)
+    const { from, values } = conditions(options, session);
     const rows = await all(
       env,
       `WITH twi AS (
@@ -190,16 +190,16 @@ export const queries: Record<string, Handler> = {
       ORDER BY twi.row_number
       LIMIT ?`,
       [...values, String(photoId), limitOf(options)],
-    )
-    const indexNumber = rows.find(({ id }) => id === photoId)?.row_number
+    );
+    const indexNumber = rows.find(({ id }) => id === photoId)?.row_number;
     return {
       photos: rows.map(({ row_number, ...row }) => present(session)(row)),
       indexNumber,
-    }
+    };
   },
 
   async getPhotosMeta(env, session, options: Options = {}) {
-    const { from, values } = conditions(options, session)
+    const { from, values } = conditions(options, session);
     const [row] = await all<Record<string, string | number | null>>(
       env,
       `SELECT COUNT(*) AS count,
@@ -207,32 +207,32 @@ export const queries: Record<string, Handler> = {
         MIN(p.created_at) AS start_created_at, MAX(p.created_at) AS end_created_at
       ${from}`,
       values,
-    )
+    );
     return {
       count: row.count,
       ...(row.start && row.end && { dateRange: { start: row.start, end: row.end } }),
       ...(row.start_created_at &&
         row.end_created_at && {
-          dateRangeCreatedAt: { start: row.start_created_at, end: row.end_created_at },
-        }),
-    }
+        dateRangeCreatedAt: { start: row.start_created_at, end: row.end_created_at },
+      }),
+    };
   },
 
   async getPhoto(env, session, id: string, includeHidden?: boolean) {
     const [row] = await all(
       env,
-      `SELECT * FROM photos WHERE id = ? AND (hidden = 0 OR (? AND (? OR owner_sub = ?)))`,
+      'SELECT * FROM photos WHERE id = ? AND (hidden = 0 OR (? AND (? OR owner_sub = ?)))',
       [String(id), includeHidden ? 1 : 0, session.admin ? 1 : 0, session.sub],
-    )
-    return row ? present(session)(row) : null
+    );
+    return row ? present(session)(row) : null;
   },
 
   async getPhotosMostRecentUpdate(env) {
     const [row] = await all<{ updated_at: string }>(
       env,
       'SELECT updated_at FROM photos ORDER BY updated_at DESC LIMIT 1',
-    )
-    return row?.updated_at ?? null
+    );
+    return row?.updated_at ?? null;
   },
 
   async getAllPublicPhotoIds(env, _session, limit?: number) {
@@ -240,8 +240,8 @@ export const queries: Record<string, Handler> = {
       env,
       `SELECT id FROM photos WHERE ${VISIBLE} LIMIT ?`,
       [limitOf({ limit: limit ?? MAX_LIMIT })],
-    )
-    return rows.map(({ id }) => id)
+    );
+    return rows.map(({ id }) => id);
   },
 
   getAllPhotoIdsWithUpdatedAt: (env) =>
@@ -304,8 +304,8 @@ export const queries: Record<string, Handler> = {
     ),
 
   async getAlbumFromSlug(env, _session, albumSlug: string) {
-    const [row] = await all(env, 'SELECT * FROM albums WHERE slug = ?', [String(albumSlug)])
-    return row ?? null
+    const [row] = await all(env, 'SELECT * FROM albums WHERE slug = ?', [String(albumSlug)]);
+    return row ?? null;
   },
 
   getAlbumsWithMeta: (env) =>
@@ -322,8 +322,8 @@ export const queries: Record<string, Handler> = {
       env,
       'SELECT a.title FROM albums a JOIN album_photo ap ON a.id = ap.album_id WHERE ap.photo_id = ?',
       [String(photoId)],
-    )
-    return rows.map(({ title }) => title)
+    );
+    return rows.map(({ title }) => title);
   },
 
   async getTagsForAlbum(env, _session, albumId: string) {
@@ -333,7 +333,7 @@ export const queries: Record<string, Handler> = {
       JOIN album_photo ap ON p.id = ap.photo_id, json_each(p.tags) AS tags
       WHERE ap.album_id = ? AND p.hidden = 0`,
       [String(albumId)],
-    )
-    return rows.map(({ tag }) => tag)
+    );
+    return rows.map(({ tag }) => tag);
   },
-}
+};

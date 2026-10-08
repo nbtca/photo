@@ -40,7 +40,8 @@ const asyncComponents = (): Plugin => ({
   },
 });
 
-const EXPORT_NAME = /^export (?:const|let|function|async function|class) (\w+)/gm;
+const EXPORT_NAME =
+  /^export (?:const|let|function|async function|class) (\w+)/gm;
 const ORIGINAL = '?original';
 
 // Server actions run in the browser. Each one is wrapped so that the

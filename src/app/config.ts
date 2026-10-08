@@ -611,7 +611,6 @@ export const APP_CONFIGURATION = {
   isAdminStorageDebugEnabled: ADMIN_STORAGE_DEBUG_ENABLED,
   isAdminAiModelDebugEnabled: ADMIN_AI_MODEL_DEBUG_ENABLED,
   // Misc
-  nextVersion: dependencies.next,
   reactVersion: dependencies.react,
   nodeVersion: (process.version || '').match(/[0-9.]+$/)?.[0],
   baseUrl: BASE_URL,

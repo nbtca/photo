@@ -5,7 +5,6 @@ import {
   signIn,
   signOut,
 } from '@/auth/server';
-import type { Session } from 'next-auth';
 import { redirect } from 'next/navigation';
 import {
   generateAuthSecret,
@@ -50,8 +49,5 @@ export const signOutAction = async () =>
   signOut({ redirect: false });
 
 export const getAuthAction = async () => auth();
-
-export const logClientAuthUpdate = async (data: Session | null | undefined) =>
-  console.log('Client auth update', data);
 
 export const generateAuthSecretAction = async () => generateAuthSecret();

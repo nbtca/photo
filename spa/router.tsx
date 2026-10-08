@@ -35,21 +35,19 @@ const ADMIN_ROUTES = 'photos|uploads|albums|tags|recipes';
 // encoded slashes on a full page load, so it may span several segments.
 const UPLOAD_PATH = 'uploadPath';
 
+type Loader = () => Promise<{ default: ComponentType<PageProps> }>;
+type Layout = ComponentType<{ children: ReactNode }>;
+
 const pages = Object.entries(
-  import.meta.glob<{ default: ComponentType<PageProps> }>([
-    '../app/**/page.tsx',
-    '!../app/og/**',
-    '!../app/sign-in/**',
-    '!../app/film-demo/**',
-    '!../app/library/**',
-  ]),
+  import.meta.glob('../app/**/page.tsx') as Record<string, Loader>,
 ).filter(([file]) =>
   !file.startsWith('../app/admin/') ||
   new RegExp(`^../app/admin/(${ADMIN_ROUTES})/`).test(file));
 
-const layouts = import.meta.glob<{
-  default: ComponentType<{ children: ReactNode }>
-}>(['../app/*/**/layout.tsx'], { eager: true });
+const layouts = import.meta.glob(
+  '../app/*/**/layout.tsx',
+  { eager: true },
+) as Record<string, { default: Layout }>;
 
 const layoutsFor = (file: string) =>
   Object.entries(layouts)
@@ -106,7 +104,10 @@ export function Page() {
   const route = useMemo(() => matchRoute(pathname), [pathname]);
   const props = useMemo(() => route && {
     params: keyed(route.params, pathname),
-    searchParams: keyed(Object.fromEntries(new URLSearchParams(search)), search),
+    searchParams: keyed(
+      Object.fromEntries(new URLSearchParams(search)),
+      search,
+    ),
   }, [route, pathname, search]);
 
   if (!route || !props) { return <Redirect path="/" />; }

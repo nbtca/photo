@@ -165,7 +165,6 @@ export default function PhotoPrevNextActions({
     downloadUrl,
     downloadFileName,
     deletePhoto,
-    hasAiContentGeneration,
   ]);
   useKeydownHandler({ onKeyDown });
 

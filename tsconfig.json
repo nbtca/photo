@@ -16,27 +16,35 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",
+    "types": ["vite/client"],
     "incremental": true,
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
     "paths": {
       "@/*": [
         "./src/*"
-      ]
+      ],
+      "@spa/*": [
+        "./spa/*"
+      ],
+      "next/cache": ["./spa/next/cache.ts"],
+      "next/form": ["./spa/next/form.tsx"],
+      "next/headers": ["./spa/next/headers.ts"],
+      "next/image": ["./spa/next/image.tsx"],
+      "next/link": ["./spa/next/link.tsx"],
+      "next/navigation": ["./spa/next/navigation.ts"],
+      "next/server": ["./spa/next/server.ts"],
+      "sharp": ["./spa/server/sharp.ts"],
+      "@ai-sdk/rsc": ["./spa/server/streamable.ts"]
     }
   },
   "include": [
-    "next-env.d.ts",
     "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts"
+    "**/*.tsx"
   ],
   "exclude": [
     "node_modules",
-    "__tests__"
+    "__tests__",
+    "worker",
+    "worker-configuration.d.ts",
+    "test"
   ]
 }

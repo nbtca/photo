@@ -2,8 +2,6 @@
 
 import {
   PATH_ADMIN_ALBUMS,
-  PATH_ADMIN_CONFIGURATION,
-  PATH_ADMIN_INSIGHTS,
   PATH_ADMIN_PHOTOS,
   PATH_ADMIN_PHOTOS_UPDATES,
   PATH_ADMIN_RECIPES,
@@ -14,7 +12,6 @@ import { useAppState } from '@/app/AppState';
 import { useUploadState } from '@/admin/upload/UploadState';
 import { IoArrowDown, IoArrowUp } from 'react-icons/io5';
 import { clsx } from 'clsx/lite';
-import AdminAppInfoIcon from './AdminAppInfoIcon';
 import { signOutAction } from '@/auth/actions';
 import { useMemo } from 'react';
 import IconPhoto from '@/components/icons/IconPhoto';

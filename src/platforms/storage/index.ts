@@ -123,6 +123,7 @@ export const deleteFilesWithPrefix = async (prefix: string) => {
   return Promise.all(urls.map(({ url }) => deleteFile(url)));
 };
 
-export const getSignedUrlForUrl = async (url: string) => url;
+export const getSignedUrlForUrl = async (url: string, _method?: string) =>
+  url;
 
 export const testStorageConnection = async () => {};

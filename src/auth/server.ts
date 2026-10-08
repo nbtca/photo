@@ -5,7 +5,7 @@ export const auth = async () => {
   return { user: { name, email: name }, expires: '' };
 };
 
-export const signIn = async () => {
+export const signIn = async (..._args: unknown[]) => {
   location.assign('/auth/login');
 };
 

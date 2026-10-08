@@ -13,4 +13,4 @@ export const addAiTextToFormData = async ({
   formData?: Partial<PhotoFormData>
   imageBase64?: string
   uniqueTags?: unknown
-}) => formData;
+}): Promise<Partial<PhotoFormData>> => formData ?? {};

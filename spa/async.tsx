@@ -1,6 +1,9 @@
 import { ReactNode, isValidElement, use } from 'react';
-import { RedirectError, Redirect } from '@spa/next/navigation';
-import { useDataVersion } from '@spa/next/navigation';
+import {
+  Redirect,
+  RedirectError,
+  useDataVersion,
+} from '@spa/next/navigation';
 
 const MAX_ENTRIES = 300;
 const results = new Map<string, Promise<ReactNode>>();

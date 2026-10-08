@@ -1,4 +1,8 @@
-import { getPhotosMetaCached, getUniqueRecipesCached, getUniqueTagsCached } from '@/photo/cache';
+import {
+  getPhotosMetaCached,
+  getUniqueRecipesCached,
+  getUniqueTagsCached,
+} from '@/photo/cache';
 import { getAlbumsWithMetaCached } from '@/album/cache';
 import { getStorageUploadUrlsNoStore } from '@/platforms/storage/cache';
 import { revalidatePath } from 'next/cache';
@@ -8,7 +12,7 @@ export type AdminData = Awaited<ReturnType<typeof getAdminDataAction>>;
 export const revalidateAdminAfterUploadAction = async () =>
   revalidatePath('/admin', 'layout');
 
-const count = <T,>(promise: Promise<T[]>) =>
+const count = <T>(promise: Promise<T[]>) =>
   promise.then(items => items.length).catch(() => 0);
 
 export const getAdminDataAction = async () => {

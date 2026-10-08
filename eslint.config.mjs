@@ -19,6 +19,9 @@ export default defineConfig([
     'out/**',
     'build/**',
     'next-env.d.ts',
+    'dist/**',
+    '.wrangler/**',
+    'worker-configuration.d.ts',
   ]), {
     // @stylistic/comma-dangle allows `<T,>` only when JSX is enabled.
     files: ['**/*.tsx'],
@@ -71,5 +74,15 @@ export default defineConfig([
         { 'code': 80 },
       ],
     },
+  }, {
+  // SQL statements read better unwrapped.
+  files: ['worker/**', 'test/**'],
+  rules: {
+    '@stylistic/max-len': 'off',
+    '@typescript-eslint/no-unused-vars': ['warn', {
+      argsIgnorePattern: '^_',
+      varsIgnorePattern: '^_',
+      ignoreRestSiblings: true,
+    }],
   },
-]);
+}]);

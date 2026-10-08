@@ -3,7 +3,11 @@ import { clsx } from 'clsx/lite';
 const SIGNED_IN = 'signed-in';
 
 const remembered = () => {
-  try { return Boolean(localStorage.getItem(SIGNED_IN)); } catch { return false; }
+  try {
+    return Boolean(localStorage.getItem(SIGNED_IN));
+  } catch {
+    return false;
+  }
 };
 
 export const rememberSignIn = (signedIn: boolean) => {

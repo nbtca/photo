@@ -25,6 +25,7 @@ const sourceForWidth = (src: string, width?: number) =>
 
 export default function Image({
   src,
+  alt,
   width,
   height,
   fill,
@@ -40,6 +41,7 @@ export default function Image({
   return (
     <img
       {...props}
+      alt={alt}
       src={sourceForWidth(src, Number(width) || undefined)}
       width={fill ? undefined : width}
       height={fill ? undefined : height}
@@ -47,7 +49,13 @@ export default function Image({
       fetchPriority={priority ? 'high' : undefined}
       decoding="async"
       style={fill
-        ? { position: 'absolute', inset: 0, width: '100%', height: '100%', ...style }
+        ? {
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          ...style,
+        }
         : style}
     />
   );

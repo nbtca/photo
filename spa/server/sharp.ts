@@ -74,4 +74,6 @@ class Pipeline {
 
 export type Sharp = Pipeline;
 
-export default (input: ArrayBuffer | Uint8Array) => new Pipeline(input);
+const sharp = (input: ArrayBuffer | Uint8Array) => new Pipeline(input);
+
+export default sharp;
