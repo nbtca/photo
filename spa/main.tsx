@@ -11,6 +11,7 @@ import RecipeModal from '@/recipe/RecipeModal';
 import PhotoEscapeHandler from '@/photo/PhotoEscapeHandler';
 import ToasterWithThemes from '@/toast/ToasterWithThemes';
 import { Page, RouterProvider } from '@spa/router';
+import Gate, { rememberSignIn, shouldShowGate } from '@spa/Gate';
 
 import '../tailwind.css';
 
@@ -44,4 +45,17 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('root')!).render(<App />);
+const root = createRoot(document.getElementById('root')!);
+
+addEventListener('unauthorized', () => {
+  if (shouldShowGate()) { root.render(<Gate />); }
+});
+
+fetch('/api/me').then(({ ok }) => {
+  if (ok) {
+    rememberSignIn(true);
+    root.render(<App />);
+  } else if (shouldShowGate()) {
+    root.render(<Gate />);
+  }
+});
