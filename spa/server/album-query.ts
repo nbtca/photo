@@ -1,8 +1,30 @@
 import { rpc } from '@spa/data';
-import { Albums, parseAlbumFromDb } from '@/album';
+import { Album, Albums, parseAlbumFromDb } from '@/album';
 
 export const createAlbumsTable = async () => {};
 export const createAlbumPhotoTable = async () => {};
+
+export const insertAlbum = (album: Omit<Album, 'id'>) =>
+  rpc<string>('insertAlbum', album);
+
+export const updateAlbum = (album: Album) => rpc<void>('updateAlbum', album);
+
+export const deleteAlbum = (id: string) => rpc<void>('deleteAlbum', id);
+
+export const clearPhotoAlbumIds = (photoId: string) =>
+  rpc<void>('clearPhotoAlbumIds', photoId);
+
+export const addPhotoAlbumIds = async (
+  photoIds: string[],
+  albumIds: string[],
+) => {
+  if (photoIds.length > 0 && albumIds.length > 0) {
+    await rpc<void>('addPhotoAlbumIds', photoIds, albumIds);
+  }
+};
+
+export const addPhotoAlbumId = (photoId: string, albumId: string) =>
+  addPhotoAlbumIds([photoId], [albumId]);
 
 export const getAlbumFromSlug = (slug: string) =>
   rpc<object | null>('getAlbumFromSlug', slug)

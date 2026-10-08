@@ -6,7 +6,20 @@ export type NextImageSize = NextCustomSize | NextImageDeviceSize;
 
 export const MAX_IMAGE_SIZE: NextImageSize = 3840;
 
-// Photos are stored in two sizes, /img/l/:id and /img/t/:id.
+const VARIANTS = [
+  { suffix: 'sm', size: 200 },
+  { suffix: 'md', size: 640 },
+  { suffix: 'lg', size: 1080 },
+];
+
+// Photos are stored with three smaller variants named after the original.
+export const variantForWidth = (imageUrl: string, width: number) => {
+  const suffix = VARIANTS.find(({ size }) => width <= size)?.suffix;
+  return suffix
+    ? imageUrl.replace(/^(\/img\/photo-\w+)\.\w+$/, `$1-${suffix}.jpg`)
+    : imageUrl;
+};
+
 export const getNextImageUrlForRequest = ({
   imageUrl,
   size,
@@ -16,7 +29,4 @@ export const getNextImageUrlForRequest = ({
   quality?: number
   baseUrl?: string
   addBypassSecret?: boolean
-}) =>
-  size <= 640
-    ? imageUrl.replace(/^\/img\/l\//, '/img/t/')
-    : imageUrl;
+}) => variantForWidth(imageUrl, size);

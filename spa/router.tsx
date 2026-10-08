@@ -14,26 +14,51 @@ import {
   NavigateOptions,
   Redirect,
   RouterContext,
+  navigation,
   usePathname,
   useSearchParams,
 } from '@spa/next/navigation';
-import { invalidateData } from '@spa/data';
+import {
+  getDataVersion,
+  invalidateData,
+  onDataInvalidated,
+} from '@spa/data';
 
 interface PageProps {
   params: Promise<Record<string, string>>
   searchParams: Promise<Record<string, string>>
 }
 
-const pages = import.meta.glob<{ default: ComponentType<PageProps> }>([
-  '../app/**/page.tsx',
-  '!../app/admin/**',
-  '!../app/og/**',
-  '!../app/sign-in/**',
-  '!../app/film-demo/**',
-  '!../app/library/**',
-]);
+const ADMIN_ROUTES = 'photos|uploads|albums|tags|recipes';
 
-const routes = Object.entries(pages)
+// This parameter holds a file URL. Workers static assets decode its
+// encoded slashes on a full page load, so it may span several segments.
+const UPLOAD_PATH = 'uploadPath';
+
+const pages = Object.entries(
+  import.meta.glob<{ default: ComponentType<PageProps> }>([
+    '../app/**/page.tsx',
+    '!../app/og/**',
+    '!../app/sign-in/**',
+    '!../app/film-demo/**',
+    '!../app/library/**',
+  ]),
+).filter(([file]) =>
+  !file.startsWith('../app/admin/') ||
+  new RegExp(`^../app/admin/(${ADMIN_ROUTES})/`).test(file));
+
+const layouts = import.meta.glob<{
+  default: ComponentType<{ children: ReactNode }>
+}>(['../app/*/**/layout.tsx'], { eager: true });
+
+const layoutsFor = (file: string) =>
+  Object.entries(layouts)
+    .filter(([layout]) =>
+      file.startsWith(layout.slice(0, -'layout.tsx'.length)))
+    .sort(([a], [b]) => b.length - a.length)
+    .map(([, { default: Layout }]) => Layout);
+
+const routes = pages
   .map(([file, load]) => {
     const segments = file
       .slice('../app/'.length, -'page.tsx'.length)
@@ -43,24 +68,29 @@ const routes = Object.entries(pages)
     const pattern = segments.map(segment => {
       const name = segment.match(/^\[(.+)\]$/)?.[1];
       if (name) { names.push(name); }
+      if (name === UPLOAD_PATH) { return '(.+)'; }
       return name ? '([^/]+)' : segment;
     });
     return {
       pattern: new RegExp(`^/${pattern.join('/')}/?$`),
       names,
       Page: lazy(load),
+      layouts: layoutsFor(file),
     };
   })
   .sort((a, b) => a.names.length - b.names.length);
 
 const matchRoute = (pathname: string) => {
-  for (const { pattern, names, Page } of routes) {
+  for (const { pattern, names, Page, layouts } of routes) {
     const match = pathname.match(pattern);
     if (match) {
-      const params = Object.fromEntries(
-        names.map((name, index) => [name, match[index + 1]]),
-      );
-      return { Page, params };
+      const params = Object.fromEntries(names.map((name, index) => [
+        name,
+        name === UPLOAD_PATH
+          ? match[index + 1].replace(/^(?!%2F|\/)/i, '/')
+          : match[index + 1],
+      ]));
+      return { Page, layouts, params };
     }
   }
 };
@@ -79,9 +109,12 @@ export function Page() {
     searchParams: keyed(Object.fromEntries(new URLSearchParams(search)), search),
   }, [route, pathname, search]);
 
-  return route && props
-    ? <route.Page {...props} />
-    : <Redirect path="/" />;
+  if (!route || !props) { return <Redirect path="/" />; }
+
+  return route.layouts.reduce<ReactNode>(
+    (children, Layout) => <Layout>{children}</Layout>,
+    <route.Page {...props} />,
+  );
 }
 
 const readLocation = () => ({
@@ -131,11 +164,19 @@ export function RouterProvider({ children }: { children: ReactNode }) {
     }
   }, [current]);
 
-  const refresh = useCallback(() => startTransition(invalidateData), []);
+  const [dataVersion, setDataVersion] = useState(getDataVersion);
+
+  useEffect(() => {
+    navigation.navigate = navigate;
+    return onDataInvalidated(() =>
+      startTransition(() => setDataVersion(getDataVersion())));
+  }, [navigate]);
+
+  const refresh = useCallback(() => invalidateData(), []);
 
   const value = useMemo(
-    () => ({ ...current, navigate, refresh }),
-    [current, navigate, refresh],
+    () => ({ ...current, dataVersion, navigate, refresh }),
+    [current, dataVersion, navigate, refresh],
   );
 
   return <RouterContext value={value}>{children}</RouterContext>;

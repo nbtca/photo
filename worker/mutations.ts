@@ -64,7 +64,7 @@ function columns(photo: Input) {
   const lensMake = text(photo.lensMake)
   const lensModel = text(photo.lensModel)
   return {
-    extension: text(photo.extension, 8) ?? 'webp',
+    extension: text(photo.url)?.split('.').pop() ?? 'webp',
     width: number(photo.width),
     height: number(photo.height),
     aspect_ratio: number(photo.aspectRatio) ?? 1.5,

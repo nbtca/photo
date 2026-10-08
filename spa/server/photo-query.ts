@@ -1,5 +1,11 @@
 import { rpc } from '@spa/data';
-import { Photo, PhotoDateRangePostgres, PhotoDb, parsePhotoFromDb } from '@/photo';
+import {
+  Photo,
+  PhotoDateRangePostgres,
+  PhotoDb,
+  PhotoDbInsert,
+  parsePhotoFromDb,
+} from '@/photo';
 import { PhotoQueryOptions } from '@/db';
 import { Cameras, createCameraKey } from '@/camera';
 import { Lenses, createLensKey } from '@/lens';
@@ -16,22 +22,72 @@ const meta = ({ count, last_modified }: Counted) => ({
   lastModified: new Date(last_modified),
 });
 
+type Row = Omit<PhotoDb, 'takenAt' | 'updatedAt' | 'createdAt'> & {
+  taken_at: string
+  updated_at: string
+  created_at: string
+};
+
+// Postgres returns timestamps as dates, and the app relies on that.
+const parse = (row: Row) => parsePhotoFromDb({
+  ...row,
+  taken_at: new Date(row.taken_at),
+  updated_at: new Date(row.updated_at),
+  created_at: new Date(row.created_at),
+} as unknown as PhotoDb);
+
+const pass = <A extends unknown[], R = void>(name: string) =>
+  (...args: A) => rpc<R>(name, ...args);
+
 export const createPhotosTable = async () => {};
 
+export const insertPhoto = pass<[PhotoDbInsert]>('insertPhoto');
+export const updatePhoto = pass<[PhotoDbInsert]>('updatePhoto');
+export const deletePhoto = pass<[string]>('deletePhoto');
+export const setPhotoVisibilityForIds =
+  pass<[string[], boolean, boolean]>('setPhotoVisibilityForIds');
+export const addTagsToPhotos = pass<[string[], string[]]>('addTagsToPhotos');
+export const updatePhotoTitleCaption =
+  pass<[string[], (string | null)[], (string | null)[]]>(
+    'updatePhotoTitleCaption',
+  );
+export const deletePhotoTagGlobally = pass<[string]>('deletePhotoTagGlobally');
+export const renamePhotoTagGlobally =
+  pass<[string, string]>('renamePhotoTagGlobally');
+export const deletePhotoRecipeGlobally =
+  pass<[string]>('deletePhotoRecipeGlobally');
+export const renamePhotoRecipeGlobally =
+  pass<[string, string]>('renamePhotoRecipeGlobally');
+export const getPhotosNeedingRecipeTitleCount =
+  pass<[string, string, string?], number>('getPhotosNeedingRecipeTitleCount');
+export const updateAllMatchingRecipeTitles =
+  pass<[string, string, string]>('updateAllMatchingRecipeTitles');
+export const getPhotoIds =
+  pass<[PhotoQueryOptions?], string[]>('getPhotoIds');
+
+export const getRecipeTitleForData = (data: string | object, film: string) =>
+  rpc<string | null>('getRecipeTitleForData', data, film)
+    .then(title => title ?? undefined);
+
+export const getRecipeDataForTitle = (title: string) =>
+  rpc<string | null>('getRecipeDataForTitle', title)
+    .then(data => data ?? undefined);
+
+export const getPhotosInNeedOfUpdate = async (): Promise<Photo[]> => [];
+
 export const getPhotos = (options: PhotoQueryOptions = {}) =>
-  rpc<PhotoDb[]>('getPhotos', options)
-    .then(rows => rows.map(parsePhotoFromDb));
+  rpc<Row[]>('getPhotos', options).then(rows => rows.map(parse));
 
 export const getPhotoCount = (options: PhotoQueryOptions = {}) =>
   rpc<number>('getPhotoCount', options);
 
 export const getPhotosNearId = (photoId: string, options: PhotoQueryOptions) =>
-  rpc<{ photos: PhotoDb[], indexNumber?: number }>(
+  rpc<{ photos: Row[], indexNumber?: number }>(
     'getPhotosNearId',
     photoId,
     options,
   ).then(({ photos, indexNumber }) => ({
-    photos: photos.map(parsePhotoFromDb),
+    photos: photos.map(parse),
     indexNumber,
   }));
 
@@ -46,8 +102,8 @@ export const getPhoto = (
   id: string,
   includeHidden?: boolean,
 ): Promise<Photo | undefined> =>
-  rpc<PhotoDb | null>('getPhoto', id, includeHidden)
-    .then(row => row ? parsePhotoFromDb(row) : undefined);
+  rpc<Row | null>('getPhoto', id, includeHidden)
+    .then(row => row ? parse(row) : undefined);
 
 export const getPhotosMostRecentUpdate = () =>
   rpc<string | null>('getPhotosMostRecentUpdate')

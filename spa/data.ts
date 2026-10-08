@@ -1,5 +1,3 @@
-import { useSyncExternalStore } from 'react';
-
 let version = 0;
 const listeners = new Set<() => void>();
 const caches = new Set<Map<string, unknown>>();
@@ -15,13 +13,12 @@ export const invalidateData = () => {
   listeners.forEach(listener => listener());
 };
 
-export const useDataVersion = () => useSyncExternalStore(
-  listener => {
-    listeners.add(listener);
-    return () => listeners.delete(listener);
-  },
-  () => version,
-);
+export const getDataVersion = () => version;
+
+export const onDataInvalidated = (listener: () => void) => {
+  listeners.add(listener);
+  return () => { listeners.delete(listener); };
+};
 
 export class Unauthorized extends Error {}
 
@@ -34,6 +31,10 @@ export const rpc = async <T>(name: string, ...args: unknown[]): Promise<T> => {
     window.dispatchEvent(new Event('unauthorized'));
     throw new Unauthorized();
   }
-  if (!response.ok) { throw new Error(`${name}: ${response.status}`); }
+  if (!response.ok) {
+    const body: { error?: string } | null =
+      await response.json().catch(() => null);
+    throw new Error(body?.error ?? `${name}: ${response.status}`);
+  }
   return response.json();
 };

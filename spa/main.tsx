@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import { Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { clsx } from 'clsx/lite';
@@ -10,6 +11,11 @@ import ShareModals from '@/share/ShareModals';
 import RecipeModal from '@/recipe/RecipeModal';
 import PhotoEscapeHandler from '@/photo/PhotoEscapeHandler';
 import ToasterWithThemes from '@/toast/ToasterWithThemes';
+import AdminUploadPanel from '@/admin/upload/AdminUploadPanel';
+import AdminBatchEditPanel from '@/admin/select/AdminBatchEditPanel';
+import AdminEditTitlesPanel from '@/admin/edit-titles/AdminEditTitlesPanel';
+import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
+import { revalidatePath } from 'next/cache';
 import { Page, RouterProvider } from '@spa/router';
 import Gate, { rememberSignIn, shouldShowGate } from '@spa/Gate';
 
@@ -31,6 +37,16 @@ function App() {
               <ShareModals />
               <RecipeModal />
               <div className={clsx('mb-5', 'space-y-5')}>
+                <AdminUploadPanel
+                  shouldResize={!PRESERVE_ORIGINAL_UPLOADS}
+                />
+                <Suspense>
+                  <AdminBatchEditPanel
+                    onBatchActionComplete={async () =>
+                      revalidatePath('/admin', 'layout')}
+                  />
+                </Suspense>
+                <AdminEditTitlesPanel />
                 <Suspense><Page /></Suspense>
               </div>
             </main>
@@ -44,6 +60,9 @@ function App() {
     </RouterProvider>
   );
 }
+
+// The EXIF parsers were written for Node and expect a global Buffer.
+globalThis.Buffer = Buffer;
 
 const root = createRoot(document.getElementById('root')!);
 

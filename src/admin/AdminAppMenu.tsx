@@ -211,20 +211,6 @@ export default function AdminAppMenu({
           : startEditingTitles,
       });
     }
-    items.push({
-      label: appText.admin.app,
-      icon: <AdminAppInfoIcon
-        size="small"
-        className="translate-x-[-0.5px]"
-      />,
-      items: [{
-        label: appText.admin.appInsightsShort,
-        href: PATH_ADMIN_INSIGHTS,
-      }, {
-        label: appText.admin.appConfigShort,
-        href: PATH_ADMIN_CONFIGURATION,
-      }],
-    });
 
     return { items };
   }, [

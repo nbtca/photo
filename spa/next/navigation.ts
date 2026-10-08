@@ -8,6 +8,7 @@ export interface NavigateOptions {
 export interface RouterState {
   pathname: string
   search: string
+  dataVersion: number
   navigate: (path: string, options?: NavigateOptions) => void
   refresh: () => void
 }
@@ -19,6 +20,11 @@ const useRouterState = () => {
   if (!state) { throw new Error('RouterProvider is missing'); }
   return state;
 };
+
+// Lets code outside React, such as server actions, navigate.
+export const navigation: { navigate?: RouterState['navigate'] } = {};
+
+export const useDataVersion = () => useRouterState().dataVersion;
 
 export const useRouter = () => {
   const { navigate, refresh } = useRouterState();
