@@ -43,3 +43,9 @@ next-env.d.ts
 /backup
 /app/restore
 temp.jpg
+
+# cloudflare
+dist
+.wrangler
+.dev.vars
+worker-configuration.d.ts

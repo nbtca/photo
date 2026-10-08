@@ -71,6 +71,7 @@
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@types/sanitize-html": "^2.16.2",
+    "@vitejs/plugin-react": "^6.1.2",
     "baseline-browser-mapping": "^2.11.27",
     "cross-fetch": "^4.1.0",
     "eslint": "^9",
@@ -81,6 +82,8 @@
     "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
     "ts-node": "^10.9.2",
-    "typescript": "^6"
+    "typescript": "^6",
+    "vite": "^8.3.3",
+    "wrangler": "^4.148.0"
   }
 }

@@ -1,0 +1,33 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "photo",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "account_id": "a415a3ae7a197093d02233755d38800b",
+  "routes": [{ "pattern": "photo.nbtca.space", "custom_domain": true }],
+  "observability": { "enabled": true },
+  "triggers": { "crons": ["0 19 * * *"] },
+  "dev": { "host": "localhost:8787", "upstream_protocol": "http" },
+  "assets": {
+    "directory": "dist",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/img/*", "/auth/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "photo",
+      "database_id": "00000000-0000-0000-0000-000000000000"
+    }
+  ],
+  "r2_buckets": [{ "binding": "BUCKET", "bucket_name": "photo" }],
+  "vars": {
+    "LOGTO_ISSUER": "https://auth.app.nbtca.space/oidc",
+    "LOGTO_CLIENT_ID": "",
+    "ROLE_MEMBER": "Member",
+    "ROLE_ADMIN": "Photo Admin",
+    "USER_QUOTA_MB": 500,
+    "TOTAL_QUOTA_MB": 9000,
+    "PENDING_UPLOAD_TTL": 86400
+  }
+}
