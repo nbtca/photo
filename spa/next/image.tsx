@@ -18,9 +18,10 @@ export type ImageProps = Omit<
   ref?: Ref<HTMLImageElement>
 };
 
-const THUMBNAIL_WIDTH = 480;
+const THUMBNAIL_WIDTH = 640;
 
 // Photos are stored in two sizes, /img/l/:id and /img/t/:id.
+// Thumbnails cover displayed widths up to half their size for 2x screens.
 const sourceForWidth = (src: string, width?: number) =>
   width && width <= THUMBNAIL_WIDTH / 2
     ? src.replace(/^\/img\/l\//, '/img/t/')

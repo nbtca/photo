@@ -50,6 +50,11 @@ const REPLACED_MODULES: Record<string, string> = {
   'auth/actions.ts': 'server/auth-actions.ts',
   'category/actions.ts': 'server/category-actions.ts',
   'i18n/state/AppTextProvider.tsx': 'AppTextProvider.tsx',
+  'platforms/storage/index.ts': 'server/storage.ts',
+  'platforms/next-image.ts': 'server/next-image.ts',
+  'platforms/redis.ts': 'server/redis.ts',
+  'platforms/postgres.ts': 'server/postgres.ts',
+  'auth/server.ts': 'server/auth-server.ts',
 };
 
 const EXPORT_NAME = /^export (?:const|let|function|async function|class) (\w+)/gm;
@@ -93,6 +98,7 @@ export default defineConfig({
   plugins: [replaceServerModules(), asyncComponents(), react()],
   define: {
     'process.env': JSON.stringify(ENV),
+    'process.version': JSON.stringify(''),
   },
   resolve: {
     alias: [

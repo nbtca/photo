@@ -30,6 +30,7 @@ const pages = import.meta.glob<{ default: ComponentType<PageProps> }>([
   '!../app/og/**',
   '!../app/sign-in/**',
   '!../app/film-demo/**',
+  '!../app/library/**',
 ]);
 
 const routes = Object.entries(pages)
