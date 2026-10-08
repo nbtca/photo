@@ -31,7 +31,7 @@ type Row = Record<string, unknown>
 const DEFAULT_LIMIT = 100
 const MAX_LIMIT = 2000
 const NOW = "strftime('%Y-%m-%dT%H:%M:%fZ', 'now'"
-const NEWEST = '(SELECT MAX(created_at) FROM photos WHERE ready = 1)'
+const NEWEST = '(SELECT MAX(created_at) FROM photos)'
 
 // Mirrors `parameterize` in src/utility/string.ts.
 export const slug = (value: string) =>
@@ -43,12 +43,10 @@ export const slug = (value: string) =>
 
 const parse = (value: unknown) => (typeof value === 'string' ? JSON.parse(value) : null)
 
-const present =
+export const present =
   (session: Session) =>
   ({
     owner_sub,
-    bytes,
-    ready,
     make_slug,
     model_slug,
     lens_make_slug,
@@ -56,8 +54,6 @@ const present =
     ...row
   }: Row): Row => ({
     ...row,
-    url: `/img/l/${row.id}`,
-    extension: 'webp',
     tags: parse(row.tags),
     recipe_data: parse(row.recipe_data),
     color_data: parse(row.color_data),
@@ -66,17 +62,18 @@ const present =
     editable: session.admin || owner_sub === session.sub,
   })
 
-function conditions(options: Options, session: Session) {
-  const wheres = ['p.ready = 1']
+export function conditions(options: Options, session: Session) {
+  const wheres = ['1 = 1']
   const values: Value[] = []
   const where = (clause: string, ...bound: Value[]) => {
     wheres.push(clause)
     values.push(...bound)
   }
 
-  const hidden = session.admin ? (options.hidden ?? 'exclude') : 'exclude'
+  const hidden = options.hidden ?? 'exclude'
   if (hidden === 'exclude') where('p.hidden = 0')
   if (hidden === 'only') where('p.hidden = 1')
+  if (hidden !== 'exclude' && !session.admin) where('p.owner_sub = ?', session.sub)
 
   if (options.excludeFromFeeds) where('p.exclude_from_feeds = 0')
   if (options.takenBefore) where('p.taken_at < ?', options.takenBefore)
@@ -145,13 +142,13 @@ function orderBy(options: Options) {
   }
 }
 
-const all = async <T = Row>(env: AppEnv, sql: string, values: Value[] = []) =>
+export const all = async <T = Row>(env: AppEnv, sql: string, values: Value[] = []) =>
   (await env.DB.prepare(sql).bind(...values).all<T>()).results
 
-const VISIBLE = 'ready = 1 AND hidden = 0'
+const VISIBLE = 'hidden = 0'
 const COUNTED = 'COUNT(*) AS count, MAX(updated_at) AS last_modified'
 
-type Handler = (env: AppEnv, session: Session, ...args: any[]) => Promise<unknown>
+export type Handler = (env: AppEnv, session: Session, ...args: any[]) => Promise<unknown>
 
 export const queries: Record<string, Handler> = {
   async getPhotos(env, session, options: Options = {}) {
@@ -162,6 +159,16 @@ export const queries: Record<string, Handler> = {
       [...values, limitOf(options), Math.max(0, Math.floor(Number(options.offset)) || 0)],
     )
     return rows.map(present(session))
+  },
+
+  async getPhotoIds(env, session, options: Options = {}) {
+    const { from, values } = conditions(options, session)
+    const rows = await all<{ id: string }>(
+      env,
+      `SELECT p.id ${from} ${orderBy(options)} LIMIT ? OFFSET ?`,
+      [...values, limitOf(options), Math.max(0, Math.floor(Number(options.offset)) || 0)],
+    )
+    return rows.map(({ id }) => id)
   },
 
   async getPhotoCount(env, session, options: Options = {}) {
@@ -212,17 +219,18 @@ export const queries: Record<string, Handler> = {
   },
 
   async getPhoto(env, session, id: string, includeHidden?: boolean) {
-    const hidden = includeHidden && session.admin ? '' : 'AND hidden = 0'
-    const [row] = await all(env, `SELECT * FROM photos WHERE id = ? AND ready = 1 ${hidden}`, [
-      String(id),
-    ])
+    const [row] = await all(
+      env,
+      `SELECT * FROM photos WHERE id = ? AND (hidden = 0 OR (? AND (? OR owner_sub = ?)))`,
+      [String(id), includeHidden ? 1 : 0, session.admin ? 1 : 0, session.sub],
+    )
     return row ? present(session)(row) : null
   },
 
   async getPhotosMostRecentUpdate(env) {
     const [row] = await all<{ updated_at: string }>(
       env,
-      'SELECT updated_at FROM photos WHERE ready = 1 ORDER BY updated_at DESC LIMIT 1',
+      'SELECT updated_at FROM photos ORDER BY updated_at DESC LIMIT 1',
     )
     return row?.updated_at ?? null
   },
@@ -260,7 +268,7 @@ export const queries: Record<string, Handler> = {
       env,
       `SELECT tags.value AS tag, COUNT(*) AS count, MAX(p.updated_at) AS last_modified
       FROM photos p, json_each(p.tags) AS tags
-      WHERE p.ready = 1 AND p.hidden = 0
+      WHERE p.hidden = 0
       GROUP BY tags.value ORDER BY tags.value ASC`,
     ),
 
@@ -305,7 +313,7 @@ export const queries: Record<string, Handler> = {
       env,
       `SELECT a.*, COUNT(p.id) AS count FROM albums a
       JOIN album_photo ap ON a.id = ap.album_id
-      JOIN photos p ON p.id = ap.photo_id AND p.ready = 1 AND p.hidden = 0
+      JOIN photos p ON p.id = ap.photo_id AND p.hidden = 0
       GROUP BY a.id ORDER BY a.created_at DESC`,
     ),
 
@@ -323,7 +331,7 @@ export const queries: Record<string, Handler> = {
       env,
       `SELECT DISTINCT tags.value AS tag FROM photos p
       JOIN album_photo ap ON p.id = ap.photo_id, json_each(p.tags) AS tags
-      WHERE ap.album_id = ? AND p.ready = 1 AND p.hidden = 0`,
+      WHERE ap.album_id = ? AND p.hidden = 0`,
       [String(albumId)],
     )
     return rows.map(({ tag }) => tag)
