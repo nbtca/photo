@@ -6,11 +6,12 @@ export const auth = async () => {
 };
 
 export const signIn = async (..._args: unknown[]) => {
-  location.assign('/auth/login');
+  location.reload();
 };
 
+// Cloudflare Access serves this path on every protected domain.
 export const signOut = async (_options?: object) => {
-  location.assign('/auth/logout');
+  location.assign('/cdn-cgi/access/logout');
 };
 
 // The Worker authorizes every call, so actions run as they are.

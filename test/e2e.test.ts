@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { type KeyObject, generateKeyPairSync, sign } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { type Server, createServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -12,51 +12,30 @@ const WRANGLER = 'node_modules/.bin/wrangler';
 const PORT = 8799;
 const BASE = `http://localhost:${PORT}`;
 const QUOTA_BYTES = 500;
+const AUD = 'test-audience';
+const KID = 'test-key';
 const WEBP = Buffer.concat([Buffer.from('RIFF\0\0\0\0WEBP'), Buffer.alloc(32)]);
 
-const users: Record<string, { sub: string; name: string; roles: string[] }> = {
-  alice: { sub: 'alice', name: '爱丽丝', roles: ['Member'] },
-  bob: { sub: 'bob', name: 'Bob', roles: ['Member', 'Repair Member'] },
-  admin: { sub: 'admin', name: 'Admin', roles: ['Photo Admin'] },
-  guest: { sub: 'guest', name: 'Guest', roles: ['Repair Member'] },
-  carol: { sub: 'carol', name: 'Carol', roles: ['Member'] },
-};
+const access = generateKeyPairSync('rsa', { modulusLength: 2048 });
+const stranger = generateKeyPairSync('rsa', { modulusLength: 2048 });
 
-let currentUser = 'alice';
-const challenges = new Map<string, string>();
-let issuer: Server;
+let team: Server;
+let teamUrl: string;
 let worker: ChildProcess;
 let state: string;
 
 before(async () => {
-  issuer = createServer(async (req, res) => {
-    const url = new URL(req.url!, 'http://issuer');
-    if (url.pathname === '/auth') {
-      challenges.set(currentUser, url.searchParams.get('code_challenge')!);
-      const target = new URL(url.searchParams.get('redirect_uri')!);
-      target.searchParams.set('code', currentUser);
-      target.searchParams.set('state', url.searchParams.get('state')!);
-      res.writeHead(302, { Location: target.href }).end();
-    } else if (url.pathname === '/token') {
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) chunks.push(chunk);
-      const form = new URLSearchParams(Buffer.concat(chunks).toString());
-      const code = form.get('code')!;
-      const challenge = createHash('sha256').update(form.get('code_verifier')!).digest('base64url');
-      const valid =
-        req.headers.authorization === `Basic ${btoa('client:secret')}` &&
-        challenge === challenges.get(code);
-      res.writeHead(valid ? 200 : 400, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ access_token: code }));
-    } else if (url.pathname === '/me') {
+  team = createServer((req, res) => {
+    if (req.url === '/cdn-cgi/access/certs') {
+      const jwk = { ...access.publicKey.export({ format: 'jwk' }), kid: KID, alg: 'RS256' };
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify(users[req.headers.authorization!.slice('Bearer '.length)]));
+      res.end(JSON.stringify({ keys: [jwk] }));
     } else {
       res.writeHead(404).end();
     }
   });
-  await new Promise<void>((resolve) => issuer.listen(0, '127.0.0.1', resolve));
-  const issuerUrl = `http://127.0.0.1:${(issuer.address() as AddressInfo).port}`;
+  await new Promise<void>((resolve) => team.listen(0, '127.0.0.1', resolve));
+  teamUrl = `http://127.0.0.1:${(team.address() as AddressInfo).port}`;
 
   state = mkdtempSync(join(tmpdir(), 'photo-test-'));
   execFileSync(WRANGLER, ['d1', 'migrations', 'apply', 'photo', '--local', '--persist-to', state], {
@@ -64,10 +43,9 @@ before(async () => {
     env: { ...process.env, CI: '1' },
   });
   const vars = {
-    LOGTO_ISSUER: issuerUrl,
-    LOGTO_CLIENT_ID: 'client',
-    LOGTO_CLIENT_SECRET: 'secret',
-    SESSION_SECRET: 'test-session-secret',
+    ACCESS_TEAM_DOMAIN: teamUrl,
+    ACCESS_AUD: AUD,
+    ADMIN_EMAILS: 'Admin@nbtca.space, root@nbtca.space',
     USER_QUOTA_MB: String(QUOTA_BYTES / 1024 / 1024),
     PENDING_UPLOAD_TTL: '0',
   };
@@ -98,32 +76,33 @@ before(async () => {
 
 after(() => {
   if (worker?.pid) process.kill(-worker.pid);
-  issuer?.close();
+  team?.close();
   if (state) rmSync(state, { recursive: true, force: true });
 });
 
-const cookieOf = (res: Response, name: string) =>
-  res.headers
-    .getSetCookie()
-    .map((value) => value.split(';')[0])
-    .find((value) => value.startsWith(`${name}=`) && value.length > name.length + 1);
+const encode = (value: object) => Buffer.from(JSON.stringify(value)).toString('base64url');
 
-async function signIn(user: string, to = '') {
-  currentUser = user;
-  const login = await fetch(`${BASE}/auth/login${to}`, { redirect: 'manual' });
-  const flow = cookieOf(login, '__Host-flow')!;
-  const authorize = await fetch(login.headers.get('Location')!, { redirect: 'manual' });
-  const callback = await fetch(authorize.headers.get('Location')!, {
-    redirect: 'manual',
-    headers: { Cookie: flow },
-  });
-  return { callback, session: cookieOf(callback, '__Host-session') };
+function issue(
+  claims: object,
+  { key = access.privateKey, header = {} }: { key?: KeyObject; header?: object } = {},
+) {
+  const body = `${encode({ alg: 'RS256', kid: KID, ...header })}.${encode(claims)}`;
+  return `${body}.${sign('sha256', Buffer.from(body), key).toString('base64url')}`;
 }
+
+const claimsFor = (user: string) => ({
+  aud: [AUD],
+  iss: teamUrl,
+  email: `${user}@nbtca.space`,
+  exp: Math.floor(Date.now() / 1000) + 3600,
+});
+
+const signIn = async (user: string) => ({ session: issue(claimsFor(user)) });
 
 const call = (session: string, path: string, init: RequestInit = {}) =>
   fetch(BASE + path, {
     ...init,
-    headers: { Cookie: session, Origin: BASE, ...init.headers },
+    headers: { 'Cf-Access-Jwt-Assertion': session, Origin: BASE, ...init.headers },
   });
 
 const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -180,7 +159,7 @@ async function remove(session: string, ...photos: { id: string; base: string }[]
 
 const FILE_BYTES = WEBP.length * 4;
 
-test('serves the app shell but no data without a session', async () => {
+test('serves the app shell but no data without a token', async () => {
   const shell = await fetch(BASE);
   assert.equal(shell.status, 200);
   assert.match(shell.headers.get('Content-Type')!, /text\/html/);
@@ -195,46 +174,38 @@ test('serves the app shell but no data without a session', async () => {
   assert.equal(query.status, 401);
 });
 
-test('rejects a forged or expired session', async () => {
-  const { session } = await signIn('alice');
-  const [body] = session!.slice('__Host-session='.length).split('.');
-  const forged = Buffer.from(
-    JSON.stringify({ sub: 'alice', name: 'x', admin: true, exp: 9999999999 }),
-  ).toString('base64url');
-  for (const value of [`${forged}.AAAA`, `${body}.AAAA`, body, 'garbage']) {
-    assert.equal((await call(`__Host-session=${value}`, '/api/me')).status, 401, value);
+test('accepts only tokens that Access issued for this application', async () => {
+  const valid = claimsFor('alice');
+  const [header, payload, signature] = issue(valid).split('.');
+  const rejected = {
+    'signed by another key': issue(valid, { key: stranger.privateKey }),
+    'another application': issue({ ...valid, aud: ['other-audience'] }),
+    'another team': issue({ ...valid, iss: 'https://evil.cloudflareaccess.com' }),
+    expired: issue({ ...valid, exp: Math.floor(Date.now() / 1000) - 1 }),
+    'no expiry': issue({ ...valid, exp: undefined }),
+    'no email': issue({ ...valid, email: undefined }),
+    'unknown key': issue(valid, { header: { kid: 'other-key' } }),
+    'unsigned': `${encode({ alg: 'none', kid: KID })}.${payload}.`,
+    'edited payload': `${header}.${encode({ ...valid, email: 'admin@nbtca.space' })}.${signature}`,
+    garbage: 'not-a-token',
+  };
+  for (const [reason, token] of Object.entries(rejected)) {
+    assert.equal((await call(token, '/api/me')).status, 401, reason);
   }
-});
 
-test('refuses accounts without the member role', async () => {
-  const { callback, session } = await signIn('guest');
-  assert.equal(callback.headers.get('Location'), '/?denied');
-  assert.equal(session, undefined);
-});
-
-test('rejects a callback whose state does not match', async () => {
-  const login = await fetch(`${BASE}/auth/login`, { redirect: 'manual' });
-  const res = await fetch(`${BASE}/auth/callback?code=alice&state=wrong`, {
-    redirect: 'manual',
-    headers: { Cookie: cookieOf(login, '__Host-flow')! },
+  const viaCookie = await fetch(`${BASE}/api/me`, {
+    headers: { Cookie: `other=1; CF_Authorization=${issue(valid)}` },
   });
-  assert.equal(res.status, 400);
-  assert.equal((await fetch(`${BASE}/auth/callback?code=alice&state=x`)).status, 400);
+  assert.equal(viaCookie.status, 200);
 });
 
-test('returns to the requested local path only', async () => {
-  const local = await signIn('alice', '?to=/p/abc');
-  assert.equal(local.callback.headers.get('Location'), '/p/abc');
-  const external = await signIn('alice', '?to=//evil.example');
-  assert.equal(external.callback.headers.get('Location'), '/');
-});
-
-test('sets hardened session cookies', async () => {
-  const { callback } = await signIn('alice');
-  const header = callback.headers.getSetCookie().find((value) => value.startsWith('__Host-session='))!;
-  for (const attribute of ['HttpOnly', 'Secure', 'SameSite=Lax', 'Path=/', 'Max-Age=86400']) {
-    assert.ok(header.includes(attribute), attribute);
-  }
+test('treats listed emails as admins, ignoring case', async () => {
+  const me = async (user: string) =>
+    (await (await call(issue(claimsFor(user)), '/api/me')).json()) as { name: string; admin: boolean };
+  assert.deepEqual(await me('ALICE'), { name: 'alice@nbtca.space', admin: false, used: 0, quota: QUOTA_BYTES });
+  assert.equal((await me('admin')).admin, true);
+  assert.equal((await me('root')).admin, true);
+  assert.equal((await me('administrator')).admin, false);
 });
 
 test('members upload, browse and manage their own photos', async () => {
@@ -242,14 +213,8 @@ test('members upload, browse and manage their own photos', async () => {
   const bob = (await signIn('bob')).session!;
   const admin = (await signIn('admin')).session!;
 
-  assert.deepEqual(await (await call(alice, '/api/me')).json(), {
-    name: '爱丽丝',
-    admin: false,
-    used: 0,
-    quota: QUOTA_BYTES,
-  });
   assert.deepEqual(await (await call(admin, '/api/me')).json(), {
-    name: 'Admin',
+    name: 'admin@nbtca.space',
     admin: true,
     used: 0,
     quota: null,
@@ -263,7 +228,7 @@ test('members upload, browse and manage their own photos', async () => {
   assert.equal(row.url, url);
   assert.equal(row.extension, 'webp');
   assert.equal(row.title, '合影');
-  assert.equal(row.owner_name, '爱丽丝');
+  assert.equal(row.owner_name, 'alice@nbtca.space');
   assert.equal(row.make, 'FUJIFILM');
   assert.equal(row.iso, 400);
   assert.equal(row.f_number, null);
@@ -302,7 +267,7 @@ test('members upload, browse and manage their own photos', async () => {
   const edited = await rpc(bob, 'getPhoto', id);
   assert.equal(edited.title, '新标题');
   assert.deepEqual(edited.tags, ['team-photo']);
-  assert.equal(edited.owner_name, '爱丽丝');
+  assert.equal(edited.owner_name, 'alice@nbtca.space');
 
   await rpc(alice, 'addTagsToPhotos', ['favs', 'team-photo'], [id]);
   assert.deepEqual((await rpc(bob, 'getPhoto', id)).tags, ['team-photo', 'favs']);
@@ -500,13 +465,13 @@ test('rejects cross-origin writes', async () => {
     const put = await fetch(`${BASE}/img/photo-aaaaaaaaaaaaaaaa.webp`, {
       method: 'PUT',
       body: WEBP,
-      headers: { Cookie: alice, ...headers },
+      headers: { 'Cf-Access-Jwt-Assertion': alice, ...headers },
     });
     assert.equal(put.status, 403);
     const post = await fetch(`${BASE}/api/rpc/getPhotos`, {
       method: 'POST',
       body: '[]',
-      headers: { Cookie: alice, ...headers },
+      headers: { 'Cf-Access-Jwt-Assertion': alice, ...headers },
     });
     assert.equal(post.status, 403);
   }

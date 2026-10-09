@@ -17,7 +17,6 @@ import AdminEditTitlesPanel from '@/admin/edit-titles/AdminEditTitlesPanel';
 import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { revalidatePath } from 'next/cache';
 import { Page, RouterProvider } from '@spa/router';
-import Gate, { rememberSignIn, shouldShowGate } from '@spa/Gate';
 
 import '../tailwind.css';
 
@@ -66,15 +65,31 @@ globalThis.Buffer = Buffer;
 
 const root = createRoot(document.getElementById('root')!);
 
-addEventListener('unauthorized', () => {
-  if (shouldShowGate()) { root.render(<Gate />); }
-});
+// Cloudflare Access signs members in before the page loads. A rejected
+// request means the session ran out, and a reload sends the browser back
+// through Access. The flag stops a reload loop if Access is not in front.
+const RELOADED = 'reloaded-for-sign-in';
+
+const onUnauthorized = () => {
+  if (sessionStorage.getItem(RELOADED)) {
+    root.render(
+      <p className="m-6 font-mono text-dim">
+        无法确认你的身份，请稍后刷新重试。
+      </p>,
+    );
+  } else {
+    sessionStorage.setItem(RELOADED, '1');
+    location.reload();
+  }
+};
+
+addEventListener('unauthorized', onUnauthorized);
 
 fetch('/api/me').then(({ ok }) => {
   if (ok) {
-    rememberSignIn(true);
+    sessionStorage.removeItem(RELOADED);
     root.render(<App />);
-  } else if (shouldShowGate()) {
-    root.render(<Gate />);
+  } else {
+    onUnauthorized();
   }
 });

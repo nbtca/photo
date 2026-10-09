@@ -1,4 +1,4 @@
-import { type AppEnv, type Session, getSession, handleAuth } from './auth';
+import { type AppEnv, type Session, getSession } from './auth';
 import { mutations } from './mutations';
 import { queries } from './query';
 
@@ -128,7 +128,6 @@ export default {
     const url = new URL(req.url);
     const { pathname } = url;
     const { method } = req;
-    if (pathname.startsWith('/auth/')) return handleAuth(req, url, env);
 
     const session = await getSession(req, env);
     if (!session) return error(401, 'Sign in required');
