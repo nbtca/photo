@@ -24,7 +24,7 @@
   "vars": {
     "ACCESS_TEAM_DOMAIN": "https://nbtca.cloudflareaccess.com",
     "ACCESS_AUD": "1b45cddefc88ec83959f923f6affb77b4b059eb01973377ff95ab88d7d0c9f0b",
-    "ADMIN_EMAILS": "",
+    "ADMIN_EMAILS": "contact@m1ng.space,clas.wen@icloud.com",
     "USER_QUOTA_MB": 500,
     "TOTAL_QUOTA_MB": 9000,
     "PENDING_UPLOAD_TTL": 86400
