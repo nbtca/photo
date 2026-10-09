@@ -34,7 +34,7 @@ In Zero Trust, add a self-hosted application for `photo.nbtca.space` with Logto 
 
 ```sh
 pnpm install
-pnpm test        # builds, then runs the Worker against a stub OIDC issuer
+pnpm test        # builds, then runs the Worker with test-signed Access tokens
 pnpm test:unit   # upstream's unit tests
 pnpm typecheck
 pnpm lint
