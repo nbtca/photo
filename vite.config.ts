@@ -12,12 +12,13 @@ const ENV: Record<string, string> = {
   NEXT_PUBLIC_META_TITLE: 'NBTCA 相册',
   NEXT_PUBLIC_META_DESCRIPTION: '宁波工程学院计算机协会相册',
   NEXT_PUBLIC_NAV_TITLE: 'NBTCA 相册',
-  NEXT_PUBLIC_GRID_HOMEPAGE: '1',
+  NEXT_PUBLIC_GRID_ASPECT_RATIO: '1.5',
+  NEXT_PUBLIC_CATEGORY_VISIBILITY:
+    'recents,years,cameras,albums,tags,recipes,films,lenses',
   NEXT_PUBLIC_GEO_PRIVACY: '1',
   NEXT_PUBLIC_HIDE_SOCIAL: '1',
   // Share previews were images rendered on the server.
   NEXT_PUBLIC_HIDE_CATEGORY_IMAGE_HOVERS: '1',
-  NEXT_PUBLIC_HIDE_REPO_LINK: '1',
   NEXT_PUBLIC_SITE_FEEDS: '0',
 };
 
