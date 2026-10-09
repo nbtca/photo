@@ -1,8 +1,10 @@
+import { me } from '@spa/me';
+
 export const auth = async () => {
-  const response = await fetch('/api/me');
-  if (!response.ok) { return null; }
-  const { name }: { name: string } = await response.json();
-  return { user: { name, email: name }, expires: '' };
+  const user = await me;
+  return user
+    ? { user: { name: user.name, email: user.name }, expires: '' }
+    : null;
 };
 
 export const signIn = async (..._args: unknown[]) => {

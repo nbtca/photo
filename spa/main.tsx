@@ -17,6 +17,7 @@ import AdminEditTitlesPanel from '@/admin/edit-titles/AdminEditTitlesPanel';
 import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { revalidatePath } from 'next/cache';
 import { Page, RouterProvider } from '@spa/router';
+import { me } from '@spa/me';
 
 import '../tailwind.css';
 
@@ -85,8 +86,8 @@ const onUnauthorized = () => {
 
 addEventListener('unauthorized', onUnauthorized);
 
-fetch('/api/me').then(({ ok }) => {
-  if (ok) {
+me.then(user => {
+  if (user) {
     sessionStorage.removeItem(RELOADED);
     root.render(<App />);
   } else {

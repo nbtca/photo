@@ -18,6 +18,7 @@ import {
   usePathname,
   useSearchParams,
 } from '@spa/next/navigation';
+import { META_TITLE } from '@/app/config';
 import {
   getDataVersion,
   invalidateData,
@@ -35,7 +36,10 @@ const ADMIN_ROUTES = 'photos|uploads|albums|tags|recipes';
 // encoded slashes on a full page load, so it may span several segments.
 const UPLOAD_PATH = 'uploadPath';
 
-type Loader = () => Promise<{ default: ComponentType<PageProps> }>;
+type Loader = () => Promise<{
+  default: ComponentType<PageProps>
+  generateMetadata?: (props: PageProps) => Promise<{ title?: unknown }>
+}>;
 type Layout = ComponentType<{ children: ReactNode }>;
 
 const pages = Object.entries(
@@ -73,13 +77,14 @@ const routes = pages
       pattern: new RegExp(`^/${pattern.join('/')}/?$`),
       names,
       Page: lazy(load),
+      load,
       layouts: layoutsFor(file),
     };
   })
   .sort((a, b) => a.names.length - b.names.length);
 
 const matchRoute = (pathname: string) => {
-  for (const { pattern, names, Page, layouts } of routes) {
+  for (const { pattern, names, Page, load, layouts } of routes) {
     const match = pathname.match(pattern);
     if (match) {
       const params = Object.fromEntries(names.map((name, index) => [
@@ -88,7 +93,7 @@ const matchRoute = (pathname: string) => {
           ? match[index + 1].replace(/^(?!%2F|\/)/i, '/')
           : match[index + 1],
       ]));
-      return { Page, layouts, params };
+      return { Page, load, layouts, params };
     }
   }
 };
@@ -109,6 +114,24 @@ export function Page() {
       search,
     ),
   }, [route, pathname, search]);
+
+  // Pages name themselves the way they do upstream, through generateMetadata
+  useEffect(() => {
+    let current = true;
+    if (route && props) {
+      route.load()
+        .then(page => page.generateMetadata?.(props))
+        .catch(() => undefined)
+        .then(metadata => {
+          if (current) {
+            document.title = typeof metadata?.title === 'string'
+              ? metadata.title
+              : META_TITLE;
+          }
+        });
+    }
+    return () => { current = false; };
+  }, [route, props]);
 
   if (!route || !props) { return <Redirect path="/" />; }
 

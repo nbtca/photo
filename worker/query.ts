@@ -303,6 +303,11 @@ export const queries: Record<string, Handler> = {
       GROUP BY focal_length ORDER BY focal_length ASC`,
     ),
 
+  async getLibrary(env) {
+    const [row] = await all(env, 'SELECT * FROM library LIMIT 1');
+    return row ?? null;
+  },
+
   async getAlbumFromSlug(env, _session, albumSlug: string) {
     const [row] = await all(env, 'SELECT * FROM albums WHERE slug = ?', [String(albumSlug)]);
     return row ?? null;

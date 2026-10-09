@@ -6,6 +6,7 @@ import {
 import { getAlbumsWithMetaCached } from '@/album/cache';
 import { getStorageUploadUrlsNoStore } from '@/platforms/storage/cache';
 import { revalidatePath } from 'next/cache';
+import { me } from '@spa/me';
 
 export type AdminData = Awaited<ReturnType<typeof getAdminDataAction>>;
 
@@ -16,8 +17,7 @@ const count = <T>(promise: Promise<T[]>) =>
   promise.then(items => items.length).catch(() => 0);
 
 export const getAdminDataAction = async () => {
-  const { admin }: { admin: boolean } =
-    await fetch('/api/me').then(response => response.json());
+  const admin = Boolean((await me)?.admin);
 
   const [
     photosCountTotal,

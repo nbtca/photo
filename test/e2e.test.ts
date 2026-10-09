@@ -512,3 +512,24 @@ test('removes abandoned files on schedule', async () => {
   assert.equal(me.used, FILE_BYTES);
   await remove(alice, kept);
 });
+
+test('lets only admins describe the library', async () => {
+  const alice = (await signIn('alice')).session;
+  const admin = (await signIn('admin')).session;
+  const avatar = await upload(alice);
+  assert.equal(await rpc(alice, 'getLibrary'), null);
+
+  const library = { title: '相册', description: '简介', photoIdAvatar: avatar.id, photoIdHero: 'missing1' };
+  assert.equal((await send(alice, 'upsertLibrary', library)).status, 403);
+  await rpc(admin, 'upsertLibrary', library);
+  await rpc(admin, 'upsertLibrary', { ...library, title: '协会相册' });
+
+  const saved = await rpc(alice, 'getLibrary');
+  assert.equal(saved.title, '协会相册');
+  assert.equal(saved.description, '简介');
+  assert.equal(saved.photo_id_avatar, avatar.id);
+  assert.equal(saved.photo_id_hero, null);
+
+  await remove(alice, avatar);
+  assert.equal((await rpc(alice, 'getLibrary')).photo_id_avatar, null);
+});

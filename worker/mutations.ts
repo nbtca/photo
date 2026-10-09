@@ -275,6 +275,38 @@ export const mutations: Record<string, Handler> = {
       .run();
   },
 
+  async upsertLibrary(env, session, library: Input) {
+    admin(session);
+    const photoId = async (value: unknown) => {
+      const id = text(value);
+      const [photo] = id
+        ? await all(env, 'SELECT id FROM photos WHERE id = ?', [id])
+        : [];
+      return photo ? id : null;
+    };
+    await env.DB.prepare(
+      `INSERT INTO library (id, title, subhead, description, photo_id_avatar, photo_id_hero, updated_at, created_at)
+      VALUES (1, ?1, ?2, ?3, ?4, ?5, ?6, ?6)
+      ON CONFLICT (id) DO UPDATE SET
+        title = excluded.title,
+        subhead = excluded.subhead,
+        description = excluded.description,
+        photo_id_avatar = excluded.photo_id_avatar,
+        photo_id_hero = excluded.photo_id_hero,
+        updated_at = excluded.updated_at`,
+    )
+      .bind(
+        text(library?.title),
+        text(library?.subhead, 1000),
+        text(library?.description, 4000),
+        await photoId(library?.photoIdAvatar),
+        await photoId(library?.photoIdHero),
+        now(),
+      )
+      .run();
+    return 1;
+  },
+
   async insertAlbum(env, _session, album: Input) {
     const title = text(album?.title);
     if (!title) throw invalid('Invalid album');
