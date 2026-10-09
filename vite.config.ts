@@ -13,12 +13,16 @@ const ENV: Record<string, string> = {
   NEXT_PUBLIC_META_DESCRIPTION: '宁波工程学院计算机协会相册',
   NEXT_PUBLIC_NAV_TITLE: 'NBTCA 相册',
   NEXT_PUBLIC_GRID_ASPECT_RATIO: '1.5',
+  NEXT_PUBLIC_TINT_FOLDERS: '1',
   NEXT_PUBLIC_CATEGORY_VISIBILITY:
     'recents,years,cameras,albums,tags,recipes,films,lenses',
+  // Photos of members should not carry where they were taken.
   NEXT_PUBLIC_GEO_PRIVACY: '1',
+  // The share targets are X and Threads, which members cannot reach.
   NEXT_PUBLIC_HIDE_SOCIAL: '1',
   // Share previews were images rendered on the server.
   NEXT_PUBLIC_HIDE_CATEGORY_IMAGE_HOVERS: '1',
+  // Feeds would need to be public.
   NEXT_PUBLIC_SITE_FEEDS: '0',
 };
 

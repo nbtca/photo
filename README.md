@@ -9,9 +9,9 @@ It is a fork of [exif-photo-blog](https://github.com/sambecker/exif-photo-blog) 
 - **Rendering**: Vite builds the app as static files. `spa/` holds the router and stand-ins for the `next/*` modules. Server components and server actions run in the browser.
 - **Data**: `worker/` ports the Postgres schema and queries to [D1](https://developers.cloudflare.com/d1/).
 - **Storage**: photos live in a private [R2](https://developers.cloudflare.com/r2/) bucket and are only served to signed-in members.
-- **Image processing**: the browser re-encodes every photo to WebP on a canvas, so stored files carry no EXIF or GPS data. Camera settings are read before that and kept in D1.
+- **Image processing**: the browser re-encodes every photo to WebP on a canvas, so stored files carry no EXIF or GPS data. Camera settings and colors are read before that and kept in D1.
 - **Access**: [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/) guards the whole site, and every member can upload.
-- **Removed**: AI text, color analysis, share preview images, feeds, the configuration and insights pages, and re-syncing a photo from its file.
+- **Removed**: AI text, share preview images, feeds, the configuration and insights pages, and re-syncing a photo from its file.
 
 ## Access
 
@@ -42,7 +42,7 @@ pnpm lint
 
 Access only runs in production. The tests stand in for it by signing tokens with their own key.
 
-Site settings such as the title and locale are the `NEXT_PUBLIC_*` values in `vite.config.ts`.
+Site settings are the `NEXT_PUBLIC_*` values in `vite.config.ts`. They follow [upstream's demo](https://photos.sambecker.com) unless a comment there says why not.
 
 ## Deployment
 
