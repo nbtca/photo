@@ -70,6 +70,7 @@ import {
 } from '@/tag';
 import { formatCount, formatCountDescriptive } from '@/utility/string';
 import CommandKItem from './CommandKItem';
+import { COMMAND_K_MINIMUM_QUERY_LENGTH, filterCommandK } from '.';
 import {
   CATEGORY_VISIBILITY,
   COLOR_SORT_ENABLED,
@@ -118,8 +119,6 @@ const DIALOG_TITLE = 'Global Command-K Menu';
 const DIALOG_DESCRIPTION = 'For searching photos, views, and settings';
 
 const MAX_HEIGHT = '20rem';
-
-const MINIMUM_QUERY_LENGTH = 2;
 
 type CommandKItem = {
   label: ReactNode
@@ -285,7 +284,7 @@ export default function CommandKClient({
   } = usePhotoQuery({
     query,
     isEnabled: !isPending,
-    minimumQueryLength: MINIMUM_QUERY_LENGTH,
+    minimumQueryLength: COMMAND_K_MINIMUM_QUERY_LENGTH,
   });
 
   const { setTheme } = useTheme();
@@ -787,13 +786,7 @@ export default function CommandKClient({
     <Command.Dialog
       open={isOpen}
       onOpenChange={setIsOpen}
-      filter={(value, search, keywords) => {
-        const searchFormatted = search.trim().toLocaleLowerCase();
-        return (
-          value.toLocaleLowerCase().includes(searchFormatted) ||
-          keywords?.some(keyword => keyword.includes(searchFormatted))
-        ) ? 1 : 0 ;
-      }}
+      filter={filterCommandK}
       loop
     >
       <Modal
