@@ -7,6 +7,7 @@
 
 #db
 *.sql
+!/migrations/*.sql
 
 # testing
 /coverage

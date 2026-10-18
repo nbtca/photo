@@ -6,6 +6,19 @@ const MB = 1024 * 1024;
 const MAX_FILE_BYTES = 12 * MB;
 const FILE_NAME = /^(upload|photo)-[A-Za-z0-9]{8,32}(-[a-z]{2})?\.(jpe?g|png|webp)$/;
 const handlers = { ...queries, ...mutations };
+const CACHE_SECONDS = 300;
+const CACHED = new Set([
+  'getUniqueCameras',
+  'getUniqueLenses',
+  'getUniqueTags',
+  'getUniqueRecipes',
+  'getUniqueYears',
+  'getUniqueFilms',
+  'getUniqueFocalLengths',
+  'getAlbumsWithMeta',
+  'getLibrary',
+]);
+const cacheKey = (name: string) => new Request(`https://cache.invalid/rpc/${name}`);
 
 const error = (status: number, message: string) => Response.json({ error: message }, { status });
 const noContent = () => new Response(null, { status: 204 });
@@ -19,7 +32,7 @@ function imageType(bytes: Uint8Array) {
 
 async function usage(env: AppEnv, session: Session) {
   const row = await env.DB.prepare(
-    'SELECT COALESCE(SUM(bytes), 0) AS total, COALESCE(SUM(CASE WHEN owner_sub = ? THEN bytes END), 0) AS used FROM files',
+    'SELECT COALESCE(SUM(bytes), 0) AS total, COALESCE(SUM(CASE WHEN owner_sub = ? THEN bytes END), 0) AS used FROM storage',
   )
     .bind(session.sub)
     .first<{ total: number; used: number }>();
@@ -115,8 +128,22 @@ async function call(req: Request, name: string, env: AppEnv, session: Session) {
   if (!Object.hasOwn(handlers, name)) return error(404, 'Unknown call');
   const args: unknown = await req.json().catch(() => null);
   if (!Array.isArray(args)) return error(400, 'Invalid arguments');
+  const cache = caches.default;
   try {
-    return Response.json((await handlers[name](env, session, ...args)) ?? null);
+    if (CACHED.has(name)) {
+      const hit = await cache.match(cacheKey(name));
+      if (hit) return hit;
+    }
+    const response = Response.json((await handlers[name](env, session, ...args)) ?? null);
+    if (CACHED.has(name)) {
+      const stored = response.clone();
+      stored.headers.set('Cache-Control', `max-age=${CACHE_SECONDS}`);
+      await cache.put(cacheKey(name), stored);
+    }
+    if (Object.hasOwn(mutations, name)) {
+      await Promise.all([...CACHED].map((cached) => cache.delete(cacheKey(cached))));
+    }
+    return response;
   } catch (thrown) {
     if (thrown instanceof Response) return error(thrown.status, await thrown.text());
     throw thrown;
