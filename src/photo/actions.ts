@@ -63,7 +63,6 @@ import {
   AI_TEXT_AUTO_GENERATED_FIELDS,
   AI_CONTENT_GENERATION_ENABLED,
   AUTO_GENERATE_LOCATIONS,
-  BLUR_ENABLED,
 } from '@/app/config';
 import { generateAiImageQueries } from './ai/server';
 import { createStreamableValue } from '@ai-sdk/rsc';
@@ -166,7 +165,6 @@ const addUpload = async ({
     fileBytes,
   } = await extractImageDataFromBlobPath(url, {
     includeInitialPhotoFields: true,
-    generateBlurData: BLUR_ENABLED,
     generateResizedImage: AI_CONTENT_GENERATION_ENABLED,
     lookupLocation: AUTO_GENERATE_LOCATIONS,
   });

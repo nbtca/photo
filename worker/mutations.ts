@@ -4,7 +4,6 @@ import { type Handler, all, slug } from './query';
 type Input = Record<string, unknown>;
 
 const MAX_TAGS = 30;
-const MAX_BLUR_LENGTH = 16384;
 
 const forbidden = () => new Response('Forbidden', { status: 403 });
 const invalid = (message: string) => new Response(message, { status: 400 });
@@ -58,7 +57,6 @@ function columns(photo: Input) {
   if (Number.isNaN(takenAt.getTime())) throw invalid('Invalid takenAt');
   const takenAtNaive = text(photo.takenAtNaive);
   if (!takenAtNaive) throw invalid('Invalid takenAtNaive');
-  const blurData = text(photo.blurData, MAX_BLUR_LENGTH);
   const make = text(photo.make);
   const model = text(photo.model);
   const lensMake = text(photo.lensMake);
@@ -68,7 +66,6 @@ function columns(photo: Input) {
     width: number(photo.width),
     height: number(photo.height),
     aspect_ratio: number(photo.aspectRatio) ?? 1.5,
-    blur_data: blurData?.startsWith('data:image/') ? blurData : null,
     title: text(photo.title),
     caption: text(photo.caption, 4000),
     semantic_description: text(photo.semanticDescription, 4000),

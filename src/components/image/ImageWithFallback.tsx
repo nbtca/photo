@@ -2,6 +2,7 @@
 
 /* eslint-disable jsx-a11y/alt-text */
 import { BLUR_ENABLED } from '@/app/config';
+import { variantForWidth } from '@/platforms/next-image';
 import { useAppState } from '@/app/AppState';
 import { clsx}  from 'clsx/lite';
 import Image, { ImageProps } from 'next/image';
@@ -11,7 +12,6 @@ export default function ImageWithFallback({
   ref: refProp,
   className,
   classNameImage = 'object-cover h-full',
-  blurDataURL,
   blurCompatibilityLevel = 'low',
   priority,
   ...props
@@ -72,14 +72,14 @@ export default function ImageWithFallback({
           fadeFallbackTransition &&
             'transition-opacity duration-300 ease-in',
           fadeFallbackTransition && !showFallback && 'delay-300',
-          !(BLUR_ENABLED && blurDataURL) && 'bg-main',
+          !BLUR_ENABLED && 'bg-main',
           showFallback ? 'opacity-100' : 'opacity-0',
         )}
       >
-        {(BLUR_ENABLED && blurDataURL)
+        {BLUR_ENABLED
           ? <img {...{
             ...props,
-            src: blurDataURL,
+            src: variantForWidth(String(props.src), 200),
             className: clsx(
               getBlurClass(),
               classNameImage,
