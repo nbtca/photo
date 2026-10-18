@@ -7,18 +7,13 @@ const MAX_FILE_BYTES = 12 * MB;
 const FILE_NAME = /^(upload|photo)-[A-Za-z0-9]{8,32}(-[a-z]{2})?\.(jpe?g|png|webp)$/;
 const handlers = { ...queries, ...mutations };
 const CACHE_SECONDS = 300;
-const CACHED = new Set([
-  'getUniqueCameras',
-  'getUniqueLenses',
-  'getUniqueTags',
-  'getUniqueRecipes',
-  'getUniqueYears',
-  'getUniqueFilms',
-  'getUniqueFocalLengths',
-  'getAlbumsWithMeta',
-  'getLibrary',
+const EPOCH = new Request('https://cache.invalid/epoch');
+const READS = new Set([
+  'getStorageUrlsForPrefix',
+  'getRecipeTitleForData',
+  'getRecipeDataForTitle',
+  'getPhotosNeedingRecipeTitleCount',
 ]);
-const cacheKey = (name: string) => new Request(`https://cache.invalid/rpc/${name}`);
 
 const error = (status: number, message: string) => Response.json({ error: message }, { status });
 const noContent = () => new Response(null, { status: 204 });
@@ -124,29 +119,47 @@ async function removeAbandoned(env: AppEnv) {
   }
 }
 
+async function cacheKey(cache: Cache, name: string, session: Session, args: unknown[]) {
+  const epoch = (await (await cache.match(EPOCH))?.text()) ?? '0';
+  const digest = await crypto.subtle.digest(
+    'SHA-256',
+    new TextEncoder().encode(JSON.stringify([session.sub, session.admin, args])),
+  );
+  const hash = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  return new Request(`https://cache.invalid/rpc/${epoch}/${name}/${hash}`);
+}
+
 async function call(req: Request, name: string, env: AppEnv, session: Session) {
   if (!Object.hasOwn(handlers, name)) return error(404, 'Unknown call');
   const args: unknown = await req.json().catch(() => null);
   if (!Array.isArray(args)) return error(400, 'Invalid arguments');
   const cache = caches.default;
+  const cacheable = Object.hasOwn(queries, name) && !READS.has(name);
+  const writes = Object.hasOwn(mutations, name) && !READS.has(name);
   try {
-    if (CACHED.has(name)) {
-      const hit = await cache.match(cacheKey(name));
+    let key: Request | undefined;
+    if (cacheable) {
+      key = await cacheKey(cache, name, session, args);
+      const hit = await cache.match(key);
       if (hit) return hit;
     }
     const response = Response.json((await handlers[name](env, session, ...args)) ?? null);
-    if (CACHED.has(name)) {
+    if (key) {
       const stored = response.clone();
       stored.headers.set('Cache-Control', `max-age=${CACHE_SECONDS}`);
-      await cache.put(cacheKey(name), stored);
-    }
-    if (Object.hasOwn(mutations, name)) {
-      await Promise.all([...CACHED].map((cached) => cache.delete(cacheKey(cached))));
+      await cache.put(key, stored);
     }
     return response;
   } catch (thrown) {
     if (thrown instanceof Response) return error(thrown.status, await thrown.text());
     throw thrown;
+  } finally {
+    if (writes) {
+      await cache.put(
+        EPOCH,
+        new Response(crypto.randomUUID(), { headers: { 'Cache-Control': 'max-age=86400' } }),
+      );
+    }
   }
 }
 

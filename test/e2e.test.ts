@@ -281,6 +281,24 @@ test('members upload, browse and manage their own photos', async () => {
   assert.equal(((await (await call(alice, '/api/me')).json()) as { used: number }).used, 0);
 });
 
+test('serves cached reads per user and refreshes them after writes', async () => {
+  const alice = (await signIn('alice')).session!;
+  const bob = (await signIn('bob')).session!;
+  const photo = await upload(alice);
+  const editable = async (session: string) =>
+    (await rpc<{ editable: boolean }[]>(session, 'getPhotos', {})).map((row) => row.editable);
+
+  assert.deepEqual(await editable(alice), [true]);
+  assert.deepEqual(await editable(alice), [true]);
+  assert.deepEqual(await editable(bob), [false]);
+
+  const before = await rpc<number>(bob, 'getPhotoCount', {});
+  const other = await upload(alice);
+  assert.equal(await rpc<number>(bob, 'getPhotoCount', {}), before + 1);
+  await remove(alice, photo, other);
+  assert.equal(await rpc<number>(bob, 'getPhotoCount', {}), before - 1);
+});
+
 test('keeps private photos and pending uploads to their owner', async () => {
   const alice = (await signIn('alice')).session!;
   const bob = (await signIn('bob')).session!;
