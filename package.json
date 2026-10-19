@@ -7,7 +7,7 @@
     "deploy": "vite build && wrangler deploy",
     "lint": "eslint .",
     "typecheck": "wrangler types && tsc -p . && tsc -p worker",
-    "test": "vite build && node --test test/",
+    "test": "vite build && node --test 'test/*.test.ts'",
     "test:unit": "jest __tests__ --transformIgnorePatterns 'node_modules/(?!my-library-dir)/'"
   },
   "dependencies": {
