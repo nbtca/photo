@@ -1,4 +1,5 @@
 import type { AppEnv, Session } from './auth';
+import { cached } from './cache';
 
 type Value = string | number;
 
@@ -179,22 +180,23 @@ export const queries: Record<string, Handler> = {
 
   async getPhotosNearId(env, session, photoId: string, options: Options = {}) {
     const { from, values } = conditions(options, session);
-    const rows = await all(
+    const ids = await cached(['order', session.sub, session.admin, options], async () => {
+      const rows = await all<{ id: string }>(env, `SELECT p.id ${from} ${orderBy(options)}`, values);
+      return rows.map(({ id }) => id);
+    });
+    const current = ids.indexOf(String(photoId));
+    if (current < 0) return { photos: [], indexNumber: undefined };
+    const start = Math.max(0, current - 1);
+    const wanted = ids.slice(start, start + limitOf(options));
+    const rows = await all<{ id: string }>(
       env,
-      `WITH twi AS (
-        SELECT p.*, ROW_NUMBER() OVER (${orderBy(options)}) AS row_number ${from}
-      ),
-      current AS (SELECT row_number FROM twi WHERE id = ?)
-      SELECT twi.* FROM twi, current
-      WHERE twi.row_number >= current.row_number - 1
-      ORDER BY twi.row_number
-      LIMIT ?`,
-      [...values, String(photoId), limitOf(options)],
+      `SELECT p.* ${from} AND p.id IN (${wanted.map(() => '?').join(', ')})`,
+      [...values, ...wanted],
     );
-    const indexNumber = rows.find(({ id }) => id === photoId)?.row_number;
+    const byId = new Map(rows.map((row) => [row.id, row]));
     return {
-      photos: rows.map(({ row_number, ...row }) => present(session)(row)),
-      indexNumber,
+      photos: wanted.flatMap((id) => (byId.has(id) ? [present(session)(byId.get(id)!)] : [])),
+      indexNumber: current + 1,
     };
   },
 

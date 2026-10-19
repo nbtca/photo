@@ -299,6 +299,22 @@ test('serves cached reads per user and refreshes them after writes', async () =>
   assert.equal(await rpc<number>(bob, 'getPhotoCount', {}), before - 1);
 });
 
+test('lists neighbours without exposing photos that became hidden', async () => {
+  const alice = (await signIn('alice')).session!;
+  const bob = (await signIn('bob')).session!;
+  const older = await upload(alice, { takenAt: '2026-01-01T00:00:00.000Z', takenAtNaive: '2026-01-01 00:00:00' });
+  const newer = await upload(alice, { takenAt: '2026-02-01T00:00:00.000Z', takenAtNaive: '2026-02-01 00:00:00' });
+  const near = async () => {
+    const result = await rpc(bob, 'getPhotosNearId', older.id, { limit: 5 });
+    return [result.photos.map(({ id }: { id: string }) => id), result.indexNumber];
+  };
+
+  assert.deepEqual(await near(), [[newer.id, older.id], 2]);
+  await rpc(alice, 'setPhotoVisibilityForIds', [newer.id], true, false);
+  assert.deepEqual(await near(), [[older.id], 1]);
+  await remove(alice, older, newer);
+});
+
 test('keeps private photos and pending uploads to their owner', async () => {
   const alice = (await signIn('alice')).session!;
   const bob = (await signIn('bob')).session!;
