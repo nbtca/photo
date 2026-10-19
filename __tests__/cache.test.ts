@@ -5,7 +5,7 @@ jest.mock('../spa/me', () => ({
 }));
 
 import { READS, invalidateData, rpc, setStore } from '../spa/data';
-import { queries } from '../worker/query';
+import { queries, sessionFree } from '../worker/query';
 import { unstable_cache } from '../spa/next/cache';
 
 const memoryStore = (entries = new Map<string, Entry>()): Store => ({
@@ -116,5 +116,12 @@ describe('spa data cache', () => {
 
   it('matches the Worker queries', () => {
     expect([...READS].sort()).toEqual(Object.keys(queries).sort());
+  });
+
+  it('shares only queries that ignore the session', () => {
+    for (const name of sessionFree) {
+      expect(queries).toHaveProperty(name);
+      expect(String(queries[name])).not.toMatch(/\bsession\b/);
+    }
   });
 });

@@ -151,6 +151,24 @@ const COUNTED = 'COUNT(*) AS count, MAX(updated_at) AS last_modified';
 
 export type Handler = (env: AppEnv, session: Session, ...args: any[]) => Promise<unknown>;
 
+export const sessionFree = new Set([
+  'getPhotosMostRecentUpdate',
+  'getAllPublicPhotoIds',
+  'getAllPhotoIdsWithUpdatedAt',
+  'getUniqueCameras',
+  'getUniqueLenses',
+  'getUniqueTags',
+  'getUniqueRecipes',
+  'getUniqueYears',
+  'getUniqueFilms',
+  'getUniqueFocalLengths',
+  'getLibrary',
+  'getAlbumFromSlug',
+  'getAlbumsWithMeta',
+  'getAlbumTitlesForPhoto',
+  'getTagsForAlbum',
+]);
+
 export const queries: Record<string, Handler> = {
   async getPhotos(env, session, options: Options = {}) {
     const { from, values } = conditions(options, session);

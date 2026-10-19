@@ -1,7 +1,7 @@
 import { type AppEnv, type Session, getSession } from './auth';
 import { cached, invalidate } from './cache';
 import { mutations } from './mutations';
-import { queries } from './query';
+import { queries, sessionFree } from './query';
 
 const MB = 1024 * 1024;
 const MAX_FILE_BYTES = 12 * MB;
@@ -127,7 +127,9 @@ async function call(req: Request, name: string, env: AppEnv, session: Session) {
   const load = async () => (await handlers[name](env, session, ...args)) ?? null;
   try {
     return Response.json(
-      cacheable ? await cached([name, session.sub, session.admin, args], load) : await load(),
+      cacheable
+        ? await cached(sessionFree.has(name) ? [name, args] : [name, session.sub, session.admin, args], load)
+        : await load(),
     );
   } catch (thrown) {
     if (thrown instanceof Response) return error(thrown.status, await thrown.text());
