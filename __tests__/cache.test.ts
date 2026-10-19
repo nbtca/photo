@@ -1,8 +1,11 @@
 import { Entry, Store } from '../spa/store';
 
-jest.mock('../spa/me', () => ({ me: Promise.resolve({ name: 'alice' }) }));
+jest.mock('../spa/me', () => ({
+  me: Promise.resolve({ name: 'alice' }),
+}));
 
-import { invalidateData, rpc, setStore } from '../spa/data';
+import { READS, invalidateData, rpc, setStore } from '../spa/data';
+import { queries } from '../worker/query';
 import { unstable_cache } from '../spa/next/cache';
 
 const memoryStore = (entries = new Map<string, Entry>()): Store => ({
@@ -41,24 +44,29 @@ describe('spa data cache', () => {
   it('serves a stale stored copy first and refreshes it', async () => {
     const fetchMock = respond(['fresh']);
     global.fetch = fetchMock as unknown as typeof fetch;
-    entries.set('getTags|[]', {
+    entries.set('getUniqueTags|[]', {
       json: JSON.stringify(['stale']),
       at: Date.now() - 5 * 60 * 1000,
     });
 
-    const result = await unstable_cache(() => rpc('getTags'))();
+    const result = await unstable_cache(() => rpc('getUniqueTags'))();
     expect(result).toEqual(['stale']);
     await flush();
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(entries.get('getTags|[]')?.json).toBe(JSON.stringify(['fresh']));
+    expect(entries.get('getUniqueTags|[]')?.json)
+      .toBe(JSON.stringify(['fresh']));
   });
 
   it('does not refetch a recently stored copy', async () => {
     const fetchMock = respond(['fresh']);
     global.fetch = fetchMock as unknown as typeof fetch;
-    entries.set('getYears|[]', { json: '["stored"]', at: Date.now() - 1000 });
+    entries.set('getUniqueYears|[]', {
+      json: '["stored"]',
+      at: Date.now() - 1000,
+    });
 
-    expect(await unstable_cache(() => rpc('getYears'))()).toEqual(['stored']);
+    const years = unstable_cache(() => rpc('getUniqueYears'));
+    expect(await years()).toEqual(['stored']);
     await flush();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -75,7 +83,7 @@ describe('spa data cache', () => {
 
   it('drops stored copies when data changes', async () => {
     global.fetch = respond(null) as unknown as typeof fetch;
-    entries.set('getYears|[]', { json: '["stored"]', at: Date.now() });
+    entries.set('getUniqueYears|[]', { json: '["stored"]', at: Date.now() });
 
     invalidateData();
     await rpc('deletePhoto', 'abc');
@@ -86,11 +94,27 @@ describe('spa data cache', () => {
     const fetchMock = respond(['mine']);
     global.fetch = fetchMock as unknown as typeof fetch;
     entries.set('user', { json: 'bob', at: Date.now() });
-    entries.set('getYears|[]', { json: '["bobs"]', at: Date.now() });
+    entries.set('getUniqueYears|[]', { json: '["bobs"]', at: Date.now() });
 
-    expect(await unstable_cache(() => rpc('getYears'))()).toEqual(['mine']);
+    const years = unstable_cache(() => rpc('getUniqueYears'));
+    expect(await years()).toEqual(['mine']);
     expect(entries.get('user')?.json).toBe('alice');
-    expect(entries.has('getYears|[]')).toBe(true);
-    expect(entries.get('getYears|[]')?.json).toBe('["mine"]');
+    expect(entries.has('getUniqueYears|[]')).toBe(true);
+    expect(entries.get('getUniqueYears|[]')?.json).toBe('["mine"]');
+  });
+
+  it('shares one request between identical reads in flight', async () => {
+    const fetchMock = respond([1]);
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await Promise.all([
+      rpc('getPhotos', { limit: 12 }),
+      rpc('getPhotos', { limit: 12 }),
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('matches the Worker queries', () => {
+    expect([...READS].sort()).toEqual(Object.keys(queries).sort());
   });
 });

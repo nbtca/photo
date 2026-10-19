@@ -1,4 +1,4 @@
-import { inCache, invalidateData, registerCache } from '@spa/data';
+import { invalidateData, registerCache } from '@spa/data';
 
 const entries = registerCache(new Map<string, Promise<unknown>>());
 const ids = new WeakMap<object, number>();
@@ -20,7 +20,7 @@ export const unstable_cache = <A extends unknown[], R>(
     const key = `${idOf(callback)}|${keys.join('/')}|${JSON.stringify(args)}`;
     let result = entries.get(key) as Promise<R> | undefined;
     if (!result) {
-      result = inCache(() => callback(...args));
+      result = callback(...args);
       result.catch(() => entries.delete(key));
       entries.set(key, result);
     }
