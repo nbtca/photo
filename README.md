@@ -49,9 +49,13 @@ Site settings are the `NEXT_PUBLIC_*` values in `vite.config.ts`. They follow [u
 
 ## Deployment
 
+Set up the resources once:
+
 ```sh
 wrangler d1 create photo               # copy the ID into wrangler.jsonc
 wrangler r2 bucket create photo
-wrangler d1 migrations apply photo --remote
-pnpm deploy
 ```
+
+Every push to `main` runs lint, type checks and tests in GitHub Actions, then applies the D1 migrations and deploys the Worker. Pull requests run the checks only. The `production` environment needs a `CLOUDFLARE_API_TOKEN` secret with these permissions on the account: Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit, and on the `nbtca.space` zone Workers Routes Edit. Migrations run before the new code, so write each one to work with the previous release too.
+
+To roll back, run `wrangler rollback` and fix forward in a new commit.

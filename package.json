@@ -1,5 +1,6 @@
 {
   "name": "photo",
+  "packageManager": "pnpm@10.29.3",
   "scripts": {
     "dev": "vite build && wrangler d1 migrations apply photo --local && wrangler dev",
     "build": "vite build",
