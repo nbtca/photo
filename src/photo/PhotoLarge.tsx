@@ -165,8 +165,10 @@ export default function PhotoLarge({
   const selectZoomImageElement = useCallback(
     (container: HTMLElement | null) => Array
       .from(container?.getElementsByTagName('img') ?? [])
-      // Ignore fallback blur images
-      .filter((img) => !img.src.startsWith('data:image'))[0]
+      // Ignore the fallback image, which is the 200px variant
+      // (or base64 data) and renders before the full photo
+      .filter((img) => !img.src.startsWith('data:image'))
+      .at(-1) ?? null
     , []);
 
   const refRecipe = useRef<HTMLDivElement>(null);
