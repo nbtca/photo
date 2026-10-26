@@ -118,7 +118,13 @@ async function removeAbandoned(env: AppEnv) {
   }
 }
 
-async function call(req: Request, name: string, env: AppEnv, session: Session) {
+async function call(
+  req: Request,
+  name: string,
+  env: AppEnv,
+  session: Session,
+  ctx: ExecutionContext,
+) {
   if (!Object.hasOwn(handlers, name)) return error(404, 'Unknown call');
   const args: unknown = await req.json().catch(() => null);
   if (!Array.isArray(args)) return error(400, 'Invalid arguments');
@@ -128,7 +134,11 @@ async function call(req: Request, name: string, env: AppEnv, session: Session) {
   try {
     return Response.json(
       cacheable
-        ? await cached(sessionFree.has(name) ? [name, args] : [name, session.sub, session.admin, args], load)
+        ? await cached(
+          sessionFree.has(name) ? [name, args] : [name, session.sub, session.admin, args],
+          load,
+          (stored) => ctx.waitUntil(stored),
+        )
         : await load(),
     );
   } catch (thrown) {
@@ -140,7 +150,7 @@ async function call(req: Request, name: string, env: AppEnv, session: Session) {
 }
 
 export default {
-  async fetch(req, env: AppEnv) {
+  async fetch(req, env: AppEnv, ctx) {
     const url = new URL(req.url);
     const { pathname } = url;
     const { method } = req;
@@ -160,7 +170,7 @@ export default {
     }
 
     const name = pathname.match(/^\/api\/rpc\/(\w+)$/)?.[1];
-    if (name && method === 'POST') return call(req, name, env, session);
+    if (name && method === 'POST') return call(req, name, env, session, ctx);
 
     if (pathname === '/api/me' && method === 'GET') {
       const { used, quota } = await usage(env, session);

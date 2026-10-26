@@ -1,25 +1,49 @@
 import { Buffer } from 'buffer';
-import { Suspense } from 'react';
+import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { clsx } from 'clsx/lite';
 import StateProviders from '@/app/StateProviders';
 import ThemeColors from '@/app/ThemeColors';
 import Nav from '@/app/Nav';
 import Footer from '@/app/Footer';
-import CommandK from '@/cmdk/CommandK';
-import ShareModals from '@/share/ShareModals';
-import RecipeModal from '@/recipe/RecipeModal';
 import PhotoEscapeHandler from '@/photo/PhotoEscapeHandler';
 import ToasterWithThemes from '@/toast/ToasterWithThemes';
 import AdminUploadPanel from '@/admin/upload/AdminUploadPanel';
-import AdminBatchEditPanel from '@/admin/select/AdminBatchEditPanel';
-import AdminEditTitlesPanel from '@/admin/edit-titles/AdminEditTitlesPanel';
+import { useAppState } from '@/app/AppState';
+import { useSelectPhotosState } from '@/admin/select/SelectPhotosState';
+import { useEditTitlesState } from '@/admin/edit-titles/EditTitlesState';
 import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { revalidatePath } from 'next/cache';
-import { Page, RouterProvider } from '@spa/router';
+import { Page, RouterProvider, preloadRoute } from '@spa/router';
 import { me } from '@spa/me';
 
 import '../tailwind.css';
+
+const CommandK = lazy(() => import('@/cmdk/CommandK'));
+const ShareModals = lazy(() => import('@/share/ShareModals'));
+const RecipeModal = lazy(() => import('@/recipe/RecipeModal'));
+const AdminBatchEditPanel = lazy(() =>
+  import('@/admin/select/AdminBatchEditPanel'));
+const AdminEditTitlesPanel = lazy(() =>
+  import('@/admin/edit-titles/AdminEditTitlesPanel'));
+
+function Panels() {
+  const { isCommandKOpen, shareModalProps, recipeModalProps } = useAppState();
+  const { isSelectingPhotos } = useSelectPhotosState();
+  const { isEditingTitles } = useEditTitlesState();
+
+  return (
+    <Suspense>
+      {isCommandKOpen && <CommandK />}
+      {shareModalProps && <ShareModals />}
+      {recipeModalProps && <RecipeModal />}
+      {isSelectingPhotos && <AdminBatchEditPanel
+        onBatchActionComplete={async () => revalidatePath('/admin', 'layout')}
+      />}
+      {isEditingTitles && <AdminEditTitlesPanel />}
+    </Suspense>
+  );
+}
 
 function App() {
   return (
@@ -34,25 +58,16 @@ function App() {
           )}>
             <Suspense><Nav /></Suspense>
             <main className="grow">
-              <ShareModals />
-              <RecipeModal />
               <div className={clsx('mb-5', 'space-y-5')}>
                 <AdminUploadPanel
                   shouldResize={!PRESERVE_ORIGINAL_UPLOADS}
                 />
-                <Suspense>
-                  <AdminBatchEditPanel
-                    onBatchActionComplete={async () =>
-                      revalidatePath('/admin', 'layout')}
-                  />
-                </Suspense>
-                <AdminEditTitlesPanel />
+                <Panels />
                 <Suspense><Page /></Suspense>
               </div>
             </main>
             <Footer />
           </div>
-          <Suspense><CommandK /></Suspense>
           <PhotoEscapeHandler />
           <ToasterWithThemes />
         </StateProviders>
@@ -85,6 +100,7 @@ const onUnauthorized = () => {
 };
 
 addEventListener('unauthorized', onUnauthorized);
+preloadRoute();
 
 me.then(user => {
   if (user) {

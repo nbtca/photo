@@ -36,7 +36,7 @@ import {
 } from '@/app/config';
 import AdminPhotoMenu from '@/admin/AdminPhotoMenu';
 import { RevalidatePhoto } from './InfinitePhotoScroll';
-import { useCallback, useMemo, useRef } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef } from 'react';
 import useVisibility from '@/utility/useVisibility';
 import PhotoDate from './PhotoDate';
 import { useAppState } from '@/app/AppState';
@@ -58,7 +58,8 @@ import AdminPhotoStorageCheck from '@/admin/storage/AdminPhotoStorageCheck';
 import { useEditTitlesState } from '@/admin/edit-titles/EditTitlesState';
 import { DATA_KEY_PHOTO_LARGE } from '@/admin/edit-titles/EditTitlesProvider';
 import FieldsetWithStatus from '@/components/FieldsetWithStatus';
-import PlaceEntity from '@/place/PlaceEntity';
+
+const PlaceEntity = lazy(() => import('@/place/PlaceEntity'));
 
 export default function PhotoLarge({
   photo,
@@ -267,7 +268,7 @@ export default function PhotoLarge({
           aspectRatio={photo.aspectRatio}
           blurDataURL={photo.blurData}
           blurCompatibilityMode={doesPhotoNeedBlurCompatibility(photo)}
-          loading={priority ? 'eager' : undefined}
+          priority={priority}
         />
       </ZoomControls>
       <div className={clsx(
@@ -363,9 +364,12 @@ export default function PhotoLarge({
                         photoEditOriginal,
                       )}
                       placeholder="Title"
-                      hideLabel
                       readOnly={isPerformingUpdate}
-                      className="[&_input]:font-bold"
+                      className={clsx(
+                        '[&_input]:font-bold',
+                        '[&_input]:outline-2',
+                      )}
+                      hideLabel
                     />
                     <FieldsetWithStatus
                       id={`edit-caption-${photo.id}`}
@@ -377,8 +381,9 @@ export default function PhotoLarge({
                         photoEditOriginal,
                       )}
                       placeholder="Caption"
-                      hideLabel
                       readOnly={isPerformingUpdate}
+                      className="[&_input]:outline-2"
+                      hideLabel
                     />
                   </div>
                   : hasTitle && (showTitleAsH1
@@ -493,13 +498,13 @@ export default function PhotoLarge({
                         }}
                       />}
                     {showPlaceContent && photo.location &&
-                      <div>
+                      <Suspense>
                         <PlaceEntity
                           place={photo.location}
                           contrast="low"
                           className="-translate-x-0.5"
                         />
-                      </div>}
+                      </Suspense>}
                   </>}
                 <div className={clsx(
                   'flex gap-x-3 gap-y-baseline',

@@ -11,6 +11,7 @@ export default function PhotosLarge({
   onLastPhotoVisible,
   revalidatePhoto,
   showStorageCheck,
+  prioritizeInitialPhotos = true,
   query,
   recent,
   year,
@@ -28,6 +29,7 @@ export default function PhotosLarge({
   onLastPhotoVisible?: () => void
   revalidatePhoto?: RevalidatePhoto
   showStorageCheck?: boolean
+  prioritizeInitialPhotos?: boolean
 } & PhotoSetCategory) {
   return (
     <AnimateItems
@@ -41,7 +43,7 @@ export default function PhotosLarge({
         <PhotoLarge
           key={photo.id}
           photo={photo}
-          priority={index <= 1}
+          priority={prioritizeInitialPhotos && index <= 1}
           prefetchRelatedLinks={prefetchFirstPhotoLinks && index === 0}
           revalidatePhoto={revalidatePhoto}
           shouldZoomOnFKeydown={false}

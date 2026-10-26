@@ -34,6 +34,8 @@ export default function StickyBanner({
       containerRef={ref}
       className={containerClassName}
       style={containerStyle}
+      // Stationary column would cover content after the banner shifts up
+      classNameMain="pointer-events-none!"
       contentMain={
         <div
           className={contentClassName}
@@ -47,9 +49,10 @@ export default function StickyBanner({
               'component-surface-frosted',
               // Square off once stuck so the banner meets the content below
               'transition-[border-radius] duration-200',
+              // Don't clip next child content that uses outline
+              !isOutOfPosition && 'mt-px',
               isOutOfPosition ? 'rounded-none' : 'rounded-xl',
-              // Move 1px so nav doesn't clip the card's top border
-              isOutOfPosition ? 'outline-none!' : 'translate-y-px',
+              isOutOfPosition && 'outline-none!',
               'text-gray-900! dark:text-gray-100!',
               'bg-gray-100/90! dark:bg-gray-900/70!',
               'shadow-xl/5',
