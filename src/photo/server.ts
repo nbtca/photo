@@ -7,7 +7,7 @@ import {
   FujifilmSimulation,
   getFujifilmSimulationFromMakerNote,
 } from '@/platforms/fujifilm/simulation';
-import { ExifData, ExifParserFactory } from 'ts-exif-parser';
+import type { ExifData } from 'ts-exif-parser';
 import { PhotoFormData } from './form';
 import sharp, { Sharp } from 'sharp';
 import {
@@ -34,7 +34,6 @@ import {
 import { MAX_PHOTO_UPLOAD_SIZE_IN_BYTES, PhotoDbInsert } from '.';
 import { convertExifToFormData } from './form/server';
 import { getColorFieldsForPhotoForm } from './color/server';
-import exifr from 'exifr';
 import { getCompatibleExifValue } from '@/utility/exif';
 import { fetchUrlWithByteLimit } from '@/utility/fetch';
 import { getPlaceFromCoordinates } from '@/platforms/google-places';
@@ -96,6 +95,10 @@ export const extractImageDataFromBlobPath = async (
 
   try {
     if (fileBytes) {
+      const [{ ExifParserFactory }, { default: exifr }] = await Promise.all([
+        import('ts-exif-parser'),
+        import('exifr'),
+      ]);
       const parser = ExifParserFactory.create(Buffer.from(fileBytes));
 
       // Data for form

@@ -111,6 +111,8 @@ export default function ImageWithFallback({
               getBlurClass(),
               classNameImage,
             ),
+            loading: priority || props.loading === 'eager' ? 'eager' : 'lazy',
+            decoding: 'async',
           }} />
           :  <div className={clsx(
             'w-full h-full',

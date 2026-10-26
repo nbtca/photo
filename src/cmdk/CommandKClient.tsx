@@ -117,8 +117,6 @@ import { toastSuccess } from '@/toast';
 const DIALOG_TITLE = 'Global Command-K Menu';
 const DIALOG_DESCRIPTION = 'For searching photos, views, and settings';
 
-const LISTENER_KEYDOWN = 'keydown';
-
 const MAX_HEIGHT = '20rem';
 
 const MINIMUM_QUERY_LENGTH = 2;
@@ -306,17 +304,6 @@ export default function CommandKClient({
       return () => clearTimeout(timeout);
     }
   }, [isOpen, updateMask]);
-
-  useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setIsOpen?.((open) => !open);
-      }
-    };
-    document.addEventListener(LISTENER_KEYDOWN, down);
-    return () => document.removeEventListener(LISTENER_KEYDOWN, down);
-  }, [setIsOpen]);
 
   const queriedSections = useMemo<CommandKSection[]>(() => {
     if (isOpenRef.current && photos.length > 0) {

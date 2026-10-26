@@ -83,6 +83,16 @@ export default function AppStateProvider({
   // MODAL
   const [isCommandKOpen, setIsCommandKOpen] =
     useState(false);
+  useEffect(() => {
+    const toggleSearch = (event: KeyboardEvent) => {
+      if (event.key === 'k' && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        setIsCommandKOpen(open => !open);
+      }
+    };
+    document.addEventListener('keydown', toggleSearch);
+    return () => document.removeEventListener('keydown', toggleSearch);
+  }, []);
   const [nextCommandKQuery, setNextCommandKQuery] =
     useState<string>();
   const [shareModalProps, setShareModalProps] =

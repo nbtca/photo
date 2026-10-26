@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, RefObject } from 'react';
-import { pngToJpegWithExif, jpgToJpegWithExif } from '@/utility/exif-client';
 import { clsx } from 'clsx/lite';
 import { ACCEPTED_PHOTO_FILE_TYPES } from '@/photo';
 import { FiUploadCloud } from 'react-icons/fi';
@@ -171,6 +170,8 @@ export default function ImageInput({
                     let blob: Blob | File = file;
                   
                     if (shouldResize) {
+                      const { pngToJpegWithExif, jpgToJpegWithExif } =
+                        await import('@/utility/exif-client');
                       if (isInputPng) {
                         // Use specialized PNG <> JPEG converter
                         // for EXIF preservation

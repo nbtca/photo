@@ -55,10 +55,13 @@ const subscribe = (listener: () => void) => {
   };
 };
 
-export default function useScrollDirection() {
+// Selectors must return stable values to avoid render loops.
+export default function useScrollInfo<T>(
+  selector: (scrollInfo: ScrollInfo) => T,
+) {
   return useSyncExternalStore(
     subscribe,
-    () => scrollInfo,
-    () => INITIAL_SCROLL_INFO,
+    () => selector(scrollInfo),
+    () => selector(INITIAL_SCROLL_INFO),
   );
 }

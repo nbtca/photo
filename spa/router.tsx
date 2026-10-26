@@ -98,6 +98,11 @@ const matchRoute = (pathname: string) => {
   }
 };
 
+// Starts fetching the current page's code while sign-in is still checked.
+export const preloadRoute = () => {
+  matchRoute(location.pathname)?.load().catch(() => undefined);
+};
+
 const keyed = <T,>(value: T, key: string) =>
   Object.assign(Promise.resolve(value), { key });
 

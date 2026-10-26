@@ -37,6 +37,7 @@ export default function PhotosLargeInfinite({
       {({ key, photos, onLastPhotoVisible, revalidatePhoto }) =>
         <PhotosLarge
           key={key}
+          prioritizeInitialPhotos={false}
           {...{
             photos,
             ...categories,

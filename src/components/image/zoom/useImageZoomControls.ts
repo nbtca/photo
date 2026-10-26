@@ -20,6 +20,7 @@ export default function useImageZoomControls({
   refImageContainer: RefObject<HTMLElement | null>
 } & Omit<ComponentProps<typeof ZoomControls>, 'ref' | 'children'>) {
   const viewerRef = useRef<Viewer | null>(null);
+  const openRef = useRef<() => void>(() => {});
 
   const refViewerContainer = useRef<HTMLDivElement>(null);
 
@@ -32,7 +33,7 @@ export default function useImageZoomControls({
   useMetaThemeColor({ colorLight });
 
   const open = useCallback(() =>
-    viewerRef.current?.show(), []);
+    openRef.current(), []);
 
   const close = useCallback(() =>
     viewerRef.current?.hide(), []);
@@ -52,55 +53,57 @@ export default function useImageZoomControls({
         refImageContainer.current
       );
       if (imageRef) {
-        viewerRef.current = new Viewer(imageRef, {
-          navbar: false,
-          title: false,
-          // This UI has no rotate control, and rotation makes viewer.js turn
-          // the photo during a two-finger pinch
-          rotatable: false,
-          // viewer.js applies its 300ms transition again on every zoom and
-          // every move, and it sends one of each per pointer frame. The photo
-          // then arrives 300ms after the pointer. Drop the ease while a
-          // gesture drives the viewer, and keep it everywhere else.
-          transition: {
-            move: false,
-            get zoom() {
-              return !isPointerGestureActive(viewerRef.current);
-            },
-          },
-          toolbar: {
-            zoomIn: 1,
-            reset: 2,
-            zoomOut: 3,
-          },
-          ready: ({ target }) => {
-            refViewerContainer.current =
-              (target as any).viewer.viewer as HTMLDivElement;
-          },
-          url: (image: HTMLImageElement) => {
-            // Addresses Safari bug where images don't load
-            image.loading = 'eager';
-            return image.src;
-          },
-          show: () => {
-            setShouldRespondToKeyboardCommands?.(false);
-            setColorLight('#000');
-          },
-          hide: () => {
-            // Optimizes Safari status bar animation
-            setTimeout(() => setColorLight(undefined), 300);
-          },
-          hidden: () => {
-            setShouldRespondToKeyboardCommands?.(true);
-          },
-          zoom: ({ detail: { ratio } }) => {
-            setZoomLevel(ratio);
-          },
-        });
-        anchorViewerZoom(viewerRef.current);
+        const show = () => {
+          if (!viewerRef.current) {
+            viewerRef.current = new Viewer(imageRef, {
+              navbar: false,
+              title: false,
+              // Avoid rotating photos during a two-finger pinch.
+              rotatable: false,
+              // Repeated transitions otherwise lag behind pointer gestures.
+              transition: {
+                move: false,
+                get zoom() {
+                  return !isPointerGestureActive(viewerRef.current);
+                },
+              },
+              toolbar: {
+                zoomIn: 1,
+                reset: 2,
+                zoomOut: 3,
+              },
+              ready: ({ target }) => {
+                refViewerContainer.current =
+                  (target as any).viewer.viewer as HTMLDivElement;
+              },
+              url: (image: HTMLImageElement) => image.currentSrc || image.src,
+              show: () => {
+                setShouldRespondToKeyboardCommands?.(false);
+                setColorLight('#000');
+              },
+              hide: () => {
+                // Optimizes Safari status bar animation
+                setTimeout(() => setColorLight(undefined), 300);
+              },
+              hidden: () => {
+                setShouldRespondToKeyboardCommands?.(true);
+              },
+              zoom: ({ detail: { ratio } }) => {
+                setZoomLevel(ratio);
+              },
+            });
+            anchorViewerZoom(viewerRef.current);
+          }
+          viewerRef.current.show();
+        };
+        openRef.current = show;
+        imageRef.addEventListener('click', show, { once: true });
         return () => {
+          imageRef.removeEventListener('click', show);
+          openRef.current = () => {};
           viewerRef.current?.destroy();
           viewerRef.current = null;
+          refViewerContainer.current = null;
         };
       }
     }

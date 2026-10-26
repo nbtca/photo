@@ -133,7 +133,7 @@ export default function InfinitePhotoScroll({
       keyGenerator,
       fetcher,
       {
-        initialSize: 2,
+        initialSize: 0,
         revalidateFirstPage: false,
         revalidateOnFocus: Boolean(isUserSignedIn),
         revalidateOnReconnect: Boolean(isUserSignedIn),
