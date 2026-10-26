@@ -12,6 +12,7 @@ import { useAppState } from '@/app/AppState';
 import { useSelectPhotosState } from '@/admin/select/SelectPhotosState';
 import { useEditTitlesState } from '@/admin/edit-titles/EditTitlesState';
 import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
+import { LAYOUT_CLASS_SHELL_X } from '@/app/layout-metrics';
 import { revalidatePath } from 'next/cache';
 import { Page, RouterProvider, preloadRoute } from '@spa/router';
 import { me } from '@spa/me';
@@ -54,8 +55,8 @@ function App() {
             // Stretch when body becomes 3xl:flex items-center, otherwise
             // the page shrink-wraps to content max-width
             'self-stretch',
-            'mx-3 pb-3',
-            'lg:mx-6 lg:pb-6',
+            LAYOUT_CLASS_SHELL_X,
+            'pb-3 lg:pb-6',
             'min-h-dvh flex flex-col',
           )}>
             <Suspense><Nav /></Suspense>
