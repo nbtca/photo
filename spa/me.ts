@@ -5,6 +5,7 @@ export interface Me {
   admin: boolean
   used: number
   quota: number | null
+  outage?: boolean
 }
 
 // Identity comes from Cloudflare Access and cannot change within a page load.
