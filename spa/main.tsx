@@ -100,12 +100,33 @@ const onUnauthorized = () => {
 };
 
 addEventListener('unauthorized', onUnauthorized);
+
+// Plain DOM so the notice shows even if React has not rendered or a page threw.
+const onOutage = () => {
+  if (document.getElementById('outage')) { return; }
+  const now = new Date();
+  const back = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1,
+  )).toLocaleString('zh-CN', {
+    month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit',
+  });
+  const notice = document.createElement('div');
+  notice.id = 'outage';
+  notice.setAttribute('role', 'status');
+  notice.className = 'fixed inset-x-0 top-0 z-[100] bg-amber-100 px-4 py-2 ' +
+    'text-center text-sm text-amber-950 dark:bg-amber-900 dark:text-amber-50';
+  notice.textContent = '今天的数据库额度用完了，新的照片和修改暂时无法读取或保存。' +
+    `已经看过的照片仍会显示，${back} 自动恢复，照片不会丢失。`;
+  document.body.prepend(notice);
+};
+addEventListener('outage', onOutage);
 preloadRoute();
 
 me.then(user => {
   if (user) {
     sessionStorage.removeItem(RELOADED);
     root.render(<App />);
+    if (user.outage) { onOutage(); }
   } else {
     onUnauthorized();
   }

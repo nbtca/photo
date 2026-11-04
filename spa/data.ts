@@ -103,8 +103,9 @@ const fetchJson = async (name: string, args: unknown[]) => {
     throw new Unauthorized();
   }
   if (!response.ok) {
-    const body: { error?: string } | null =
+    const body: { error?: string, outage?: boolean } | null =
       await response.json().catch(() => null);
+    if (body?.outage) window.dispatchEvent(new Event('outage'));
     throw new Error(body?.error ?? `${name}: ${response.status}`);
   }
   return response.text();

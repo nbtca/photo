@@ -15,6 +15,15 @@ const READS = new Set([
 ]);
 
 const error = (status: number, message: string) => Response.json({ error: message }, { status });
+
+// The free plan's daily D1 limits are shared by the whole Cloudflare account and reset at midnight UTC.
+const isD1Outage = (thrown: unknown) =>
+  /D1_ERROR/.test(String(thrown)) && /limit|exceeded/i.test(String(thrown));
+const outage = () =>
+  Response.json(
+    { error: 'D1 daily limit reached', outage: true },
+    { status: 503, headers: { 'Retry-After': '3600' } },
+  );
 const noContent = () => new Response(null, { status: 204 });
 
 function imageType(bytes: Uint8Array) {
@@ -151,35 +160,51 @@ async function call(
 
 export default {
   async fetch(req, env: AppEnv, ctx) {
-    const url = new URL(req.url);
-    const { pathname } = url;
-    const { method } = req;
-
-    const session = await getSession(req, env);
-    if (!session) return error(401, 'Sign in required');
-    if (method !== 'GET' && req.headers.get('Origin') !== url.origin) {
-      return error(403, 'Cross-origin request');
+    try {
+      return await handle(req, env, ctx);
+    } catch (thrown) {
+      if (isD1Outage(thrown)) return outage();
+      throw thrown;
     }
-
-    if (pathname.startsWith('/img/')) {
-      const name = pathname.slice('/img/'.length);
-      if (!FILE_NAME.test(name)) return error(404, 'Image not found');
-      if (method === 'GET') return getFile(req, name, env, session);
-      if (method === 'PUT') return putFile(req, name, env, session);
-      if (method === 'DELETE') return deleteFile(name, env, session);
-    }
-
-    const name = pathname.match(/^\/api\/rpc\/(\w+)$/)?.[1];
-    if (name && method === 'POST') return call(req, name, env, session, ctx);
-
-    if (pathname === '/api/me' && method === 'GET') {
-      const { used, quota } = await usage(env, session);
-      return Response.json({ name: session.name, admin: session.admin, used, quota });
-    }
-
-    return error(404, 'Not found');
   },
   async scheduled(_controller, env: AppEnv) {
     await removeAbandoned(env);
   },
 } satisfies ExportedHandler<AppEnv>;
+
+async function handle(req: Request, env: AppEnv, ctx: ExecutionContext) {
+  const url = new URL(req.url);
+  const { pathname } = url;
+  const { method } = req;
+
+  const session = await getSession(req, env);
+  if (!session) return error(401, 'Sign in required');
+  if (method !== 'GET' && req.headers.get('Origin') !== url.origin) {
+    return error(403, 'Cross-origin request');
+  }
+
+  if (pathname.startsWith('/img/')) {
+    const name = pathname.slice('/img/'.length);
+    if (!FILE_NAME.test(name)) return error(404, 'Image not found');
+    if (method === 'GET') return getFile(req, name, env, session);
+    if (method === 'PUT') return putFile(req, name, env, session);
+    if (method === 'DELETE') return deleteFile(name, env, session);
+  }
+
+  const name = pathname.match(/^\/api\/rpc\/(\w+)$/)?.[1];
+  if (name && method === 'POST') return call(req, name, env, session, ctx);
+
+  // Identity comes from Access, so the app can still open on cached photos when D1 is out.
+  if (pathname === '/api/me' && method === 'GET') {
+    const known = { name: session.name, admin: session.admin };
+    try {
+      const { used, quota } = await usage(env, session);
+      return Response.json({ ...known, used, quota });
+    } catch (thrown) {
+      if (!isD1Outage(thrown)) throw thrown;
+      return Response.json({ ...known, used: 0, quota: null, outage: true });
+    }
+  }
+
+  return error(404, 'Not found');
+}
