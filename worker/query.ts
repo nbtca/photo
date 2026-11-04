@@ -91,7 +91,8 @@ export function conditions(options: Options, session: Session) {
     where(`${NEWEST} >= ${NOW}, '-14 days')`);
     where(`p.created_at >= strftime('%Y-%m-%dT%H:%M:%fZ', ${NEWEST}, '-7 days')`);
   }
-  if (options.year) where('strftime(\'%Y\', p.taken_at) = ?', String(options.year));
+  // A range rather than strftime() so the taken_at index applies.
+  if (options.year) where('p.taken_at >= ? AND p.taken_at < ?', String(options.year), String(Number(options.year) + 1));
   if (options.camera?.make) where('p.make_slug = ?', slug(options.camera.make));
   if (options.camera?.model) where('p.model_slug = ?', slug(options.camera.model));
   if (options.lens?.make) where('p.lens_make_slug = ?', slug(options.lens.make));
@@ -113,7 +114,8 @@ export function conditions(options: Options, session: Session) {
   }
 
   return {
-    from: `FROM photos p${options.album?.id ? ' JOIN album_photo ap ON ap.photo_id = p.id' : ''} WHERE ${wheres.join(' AND ')}`,
+    // CROSS JOIN fixes the order: SQLite otherwise walks every photo by date and probes the album for each.
+    from: `FROM ${options.album?.id ? 'album_photo ap CROSS JOIN photos p ON ap.photo_id = p.id' : 'photos p'} WHERE ${wheres.join(' AND ')}`,
     values,
   };
 }
