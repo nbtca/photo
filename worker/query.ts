@@ -200,7 +200,7 @@ export const queries: Record<string, Handler> = {
 
   async getPhotosNearId(env, session, photoId: string, options: Options = {}) {
     const { from, values } = conditions(options, session);
-    const ids = await cached(['order', session.sub, session.admin, options], async () => {
+    const ids = await cached(env, ['order', session.sub, session.admin, options], async () => {
       const rows = await all<{ id: string }>(env, `SELECT p.id ${from} ${orderBy(options)}`, values);
       return rows.map(({ id }) => id);
     });

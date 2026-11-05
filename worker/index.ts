@@ -1,5 +1,5 @@
 import { type AppEnv, type Session, getSession } from './auth';
-import { cached, invalidate } from './cache';
+import { cached, invalidate, pruneCache } from './cache';
 import { mutations } from './mutations';
 import { queries, sessionFree } from './query';
 
@@ -144,6 +144,7 @@ async function call(
     return Response.json(
       cacheable
         ? await cached(
+          env,
           sessionFree.has(name) ? [name, args] : [name, session.sub, session.admin, args],
           load,
           (stored) => ctx.waitUntil(stored),
@@ -154,7 +155,7 @@ async function call(
     if (thrown instanceof Response) return error(thrown.status, await thrown.text());
     throw thrown;
   } finally {
-    if (writes) await invalidate();
+    if (writes) await invalidate(env);
   }
 }
 
@@ -169,6 +170,7 @@ export default {
   },
   async scheduled(_controller, env: AppEnv) {
     await removeAbandoned(env);
+    await pruneCache(env);
   },
 } satisfies ExportedHandler<AppEnv>;
 
