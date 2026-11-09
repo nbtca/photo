@@ -236,10 +236,7 @@ test('members upload, browse and manage their own photos', async () => {
   assert.equal(row.taken_at_naive, '2026-05-01 08:00:00');
   assert.deepEqual(row.tags, []);
   assert.equal(row.hidden, false);
-  assert.equal(row.editable, false);
-  for (const secret of ['owner_sub', 'make_slug']) assert.equal(secret in row, false, secret);
-  assert.equal((await rpc(alice, 'getPhoto', id)).editable, true);
-  assert.equal((await rpc(admin, 'getPhoto', id)).editable, true);
+  for (const secret of ['owner_sub', 'make_slug', 'editable']) assert.equal(secret in row, false, secret);
   assert.equal(await rpc(bob, 'getPhoto', 'missing1'), null);
 
   const image = await call(bob, url);
@@ -281,16 +278,22 @@ test('members upload, browse and manage their own photos', async () => {
   assert.equal(((await (await call(alice, '/api/me')).json()) as { used: number }).used, 0);
 });
 
-test('serves cached reads per user and refreshes them after writes', async () => {
+test('shares cached reads, keeps hidden photos per user and refreshes after writes', async () => {
   const alice = (await signIn('alice')).session!;
   const bob = (await signIn('bob')).session!;
   const photo = await upload(alice);
-  const editable = async (session: string) =>
-    (await rpc<{ editable: boolean }[]>(session, 'getPhotos', {})).map((row) => row.editable);
+  const hidden = await upload(alice);
+  await rpc(alice, 'setPhotoVisibilityForIds', [hidden.id], true, false);
+  const ids = async (session: string, options = {}) =>
+    (await rpc<{ id: string }[]>(session, 'getPhotos', options)).map((row) => row.id);
 
-  assert.deepEqual(await editable(alice), [true]);
-  assert.deepEqual(await editable(alice), [true]);
-  assert.deepEqual(await editable(bob), [false]);
+  assert.deepEqual(await ids(alice), [photo.id]);
+  assert.deepEqual(await ids(bob), [photo.id]);
+  assert.deepEqual(await ids(alice, { hidden: 'only' }), [hidden.id]);
+  assert.deepEqual(await ids(bob, { hidden: 'only' }), []);
+  assert.equal(await rpc(bob, 'getPhoto', hidden.id, true), null);
+  assert.equal((await rpc<{ id: string }>(alice, 'getPhoto', hidden.id, true)).id, hidden.id);
+  await remove(alice, hidden);
 
   const before = await rpc<number>(bob, 'getPhotoCount', {});
   const other = await upload(alice);

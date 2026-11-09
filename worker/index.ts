@@ -1,7 +1,7 @@
 import { type AppEnv, type Session, getSession } from './auth';
 import { cached, invalidate, pruneCache } from './cache';
 import { mutations } from './mutations';
-import { queries, sessionFree } from './query';
+import { cacheScope, queries } from './query';
 
 const MB = 1024 * 1024;
 const MAX_FILE_BYTES = 12 * MB;
@@ -145,7 +145,7 @@ async function call(
       cacheable
         ? await cached(
           env,
-          sessionFree.has(name) ? [name, args] : [name, session.sub, session.admin, args],
+          [name, ...cacheScope(name, args, session), args],
           load,
           (stored) => ctx.waitUntil(stored),
         )
