@@ -415,6 +415,7 @@ test('filters and groups photos the way the interface asks', async () => {
   assert.deepEqual(await ids({ focal: 50 }), [canon.id]);
   assert.deepEqual(await ids({ query: 'opening' }), [fuji.id]);
   assert.deepEqual(await ids({ query: 'LATE' }), [canon.id]);
+  assert.deepEqual(await ids({ query: '%' }), []);
   assert.deepEqual(await ids({ maximumAspectRatio: 1 }), [canon.id]);
   assert.deepEqual(await ids({ takenBefore: '2026-01-01T00:00:00.000Z' }), [fuji.id]);
   assert.deepEqual(await ids({ photoIds: [fuji.id, hidden.id] }), [fuji.id]);
