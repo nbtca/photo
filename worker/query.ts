@@ -96,8 +96,8 @@ function conditions(options: Options, session: Session) {
   if (options.updatedBefore) where('p.updated_at < ?', options.updatedBefore);
   if (options.query) {
     where(
-      '(COALESCE(p.title, \'\') || \' \' || COALESCE(p.caption, \'\') || \' \' || COALESCE(p.semantic_description, \'\')) LIKE ?',
-      `%${options.query}%`,
+      '(COALESCE(p.title, \'\') || \' \' || COALESCE(p.caption, \'\') || \' \' || COALESCE(p.semantic_description, \'\')) LIKE ? ESCAPE \'\\\'',
+      `%${options.query.replace(/[\\%_]/g, '\\$&')}%`,
     );
   }
   if (options.maximumAspectRatio) where('p.aspect_ratio <= ?', options.maximumAspectRatio);
