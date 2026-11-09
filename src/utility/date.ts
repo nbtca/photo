@@ -1,5 +1,4 @@
 import { parseISO, parse, format, isValid } from 'date-fns';
-import { formatInTimeZone } from 'date-fns-tz';
 import { Timezone } from './timezone';
 import { setDefaultDateFnLocale } from '@/i18n';
 
@@ -34,7 +33,6 @@ type Length = 'tiny' | 'short' | 'medium' | 'long' | 'rss';
 export const formatDate = ({
   date,
   length = 'long',
-  timezone,
   hideTime,
   showPlaceholder,
 }: {
@@ -74,11 +72,10 @@ export const formatDate = ({
       break;
   }
 
+  // Timezones always come from this browser, which format() already uses.
   return showPlaceholder
     ? placeholderString
-    : timezone
-      ? formatInTimeZone(date, timezone, formatString)
-      : format(date, formatString);
+    : format(date, formatString);
 };
 
 export const formatDateFromPostgresString = (
