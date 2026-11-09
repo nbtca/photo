@@ -140,6 +140,8 @@ async function call(
   const cacheable = Object.hasOwn(queries, name) && !READS.has(name);
   const writes = Object.hasOwn(mutations, name) && !READS.has(name);
   const load = async () => (await handlers[name](env, session, ...args)) ?? null;
+  // Handlers reject with a Response before they write anything.
+  let rejected = false;
   try {
     return Response.json(
       cacheable
@@ -152,10 +154,11 @@ async function call(
         : await load(),
     );
   } catch (thrown) {
-    if (thrown instanceof Response) return error(thrown.status, await thrown.text());
-    throw thrown;
+    if (!(thrown instanceof Response)) throw thrown;
+    rejected = true;
+    return error(thrown.status, await thrown.text());
   } finally {
-    if (writes) await invalidate(env);
+    if (writes && !rejected) await invalidate(env);
   }
 }
 
