@@ -16,19 +16,31 @@ import {
 } from 'react';
 import useDocumentVisibility from '@/utility/useDocumentVisibility';
 
-export default function ImageWithFallback({
+type Props = ImageProps & {
+  ref?: RefObject<HTMLImageElement | null>
+  blurCompatibilityLevel?: 'none' | 'low' | 'high'
+  classNameImage?: string
+  priority?: boolean
+};
+
+// Remount when src changes so load state never carries over
+export default function ImageWithFallback(props: Props) {
+  return (
+    <ImageWithFallbackForSrc
+      key={typeof props.src === 'string' ? props.src : undefined}
+      {...props}
+    />
+  );
+}
+
+function ImageWithFallbackForSrc({
   ref: refProp,
   className,
   classNameImage = 'object-cover h-full',
   blurCompatibilityLevel = 'low',
   priority,
   ...props
-}: ImageProps & {
-  ref?: RefObject<HTMLImageElement | null>
-  blurCompatibilityLevel?: 'none' | 'low' | 'high'
-  classNameImage?: string
-  priority?: boolean
-}) {
+}: Props) {
   const ref = useRef<HTMLImageElement>(null);
 
   const { hasLoadedWithAnimations, shouldDebugImageFallbacks } = useAppState();
