@@ -8,10 +8,25 @@ import {
 const MAX_ENTRIES = 300;
 const results = new Map<string, Promise<ReactNode>>();
 
+const typeIds = new WeakMap<object, number>();
+let nextTypeId = 0;
+
+const idOfType = (type: unknown) => {
+  if (typeof type === 'string') { return type; }
+  if (!typeIds.has(type as object)) {
+    typeIds.set(type as object, nextTypeId++);
+  }
+  return typeIds.get(type as object);
+};
+
+// A layout's result embeds its children, so elements count toward the key;
+// otherwise every page under one layout would show the first page rendered.
 const keyForProps = (props: object) =>
   JSON.stringify(props, (_key, value) => {
     if (typeof value === 'function') { return undefined; }
-    if (isValidElement(value)) { return '<element>'; }
+    if (isValidElement(value)) {
+      return { type: idOfType(value.type), key: value.key, props: value.props };
+    }
     if (typeof value?.then === 'function') { return value.key ?? '<promise>'; }
     return value;
   });
