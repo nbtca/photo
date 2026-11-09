@@ -571,3 +571,24 @@ test('lets only admins describe the library', async () => {
   await remove(alice, avatar);
   assert.equal((await rpc(alice, 'getLibrary')).photo_id_avatar, null);
 });
+
+test('runs several reads in one request', async () => {
+  const alice = (await signIn('alice')).session!;
+  const photo = await upload(alice);
+  const batch = (calls: unknown) =>
+    call(alice, '/api/rpc', { method: 'POST', body: JSON.stringify(calls) });
+
+  const res = await batch([['getPhotoCount', [{}]], ['getPhoto', [photo.id]], ['getPhoto', ['missing1']]]);
+  assert.equal(res.status, 200);
+  const [count, found, missing] = (await res.json()) as { status: number; body: any }[];
+  assert.deepEqual(count, { status: 200, body: 1 });
+  assert.equal(found.body.id, photo.id);
+  assert.deepEqual(missing, { status: 200, body: null });
+
+  assert.equal((await batch([['deletePhoto', [photo.id]]])).status, 400);
+  assert.equal((await batch([['getStorageUrlsForPrefix', ['']]])).status, 400);
+  assert.equal((await batch(Array(51).fill(['getPhotoCount', [{}]]))).status, 400);
+  assert.equal((await batch({})).status, 400);
+  assert.equal((await rpc(alice, 'getPhoto', photo.id)).id, photo.id);
+  await remove(alice, photo);
+});

@@ -5,7 +5,7 @@ jest.mock('../spa/me', () => ({
 }));
 
 import { READS, invalidateData, rpc, setStore } from '../spa/data';
-import { queries, sessionFree } from '../worker/query';
+import { cacheScope, queries } from '../worker/query';
 import { unstable_cache } from '../spa/next/cache';
 
 const memoryStore = (entries = new Map<string, Entry>()): Store => ({
@@ -118,10 +118,41 @@ describe('spa data cache', () => {
     expect([...READS].sort()).toEqual(Object.keys(queries).sort());
   });
 
-  it('shares only queries that ignore the session', () => {
-    for (const name of sessionFree) {
-      expect(queries).toHaveProperty(name);
-      expect(String(queries[name])).not.toMatch(/\bsession\b/);
-    }
+  it('caches hidden photos per member and everything else once', () => {
+    const alice = { sub: 'alice', name: 'alice', admin: false };
+    expect(cacheScope('getPhotos', [{ tag: 'a' }], alice)).toEqual([]);
+    expect(cacheScope('getUniqueTags', [], alice)).toEqual([]);
+    expect(cacheScope('getPhoto', ['id'], alice)).toEqual([]);
+    expect(cacheScope('getPhoto', ['id', true], alice))
+      .toEqual(['alice', false]);
+    expect(cacheScope('getPhotos', [{ hidden: 'only' }], alice))
+      .toEqual(['alice', false]);
+    expect(cacheScope('getPhotosNearId', ['id', { hidden: 'include' }], alice))
+      .toEqual(['alice', false]);
+  });
+
+  it('sends reads made together in one request', async () => {
+    const fetchMock = jest.fn(async () => new Response(JSON.stringify([
+      { status: 200, body: ['tags'] },
+      { status: 403, body: { error: 'Forbidden' } },
+    ])));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    setStore(undefined);
+
+    const [tags, years] = await Promise.allSettled([
+      rpc('getUniqueTags', 'batched'),
+      rpc('getUniqueYears', 'batched'),
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]).toEqual([
+      '/api/rpc',
+      expect.objectContaining({ body: JSON.stringify([
+        ['getUniqueTags', ['batched']],
+        ['getUniqueYears', ['batched']],
+      ]) }),
+    ]);
+    expect(tags).toEqual({ status: 'fulfilled', value: ['tags'] });
+    expect(years)
+      .toEqual({ status: 'rejected', reason: new Error('Forbidden') });
   });
 });
