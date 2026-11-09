@@ -5,7 +5,6 @@ import PhotoFilm from '@/film/PhotoFilm';
 import clsx from 'clsx/lite';
 import { ReactNode, RefObject } from 'react';
 import { IoCloseCircle } from 'react-icons/io5';
-import { motion } from 'framer-motion';
 import {
   addSign,
   formatGrain,
@@ -28,10 +27,12 @@ export default function PhotoRecipeOverlay({
   make,
   onClose,
   isOnPhoto = true,
+  isLeaving,
 }: RecipeProps & {
   ref?: RefObject<HTMLDivElement | null>
   onClose?: () => void
   isOnPhoto?: boolean
+  isLeaving?: boolean
 }) {
   const {
     dynamicRange,
@@ -92,13 +93,13 @@ export default function PhotoRecipeOverlay({
     </div>;
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.95 }}
       className={clsx(
         'z-10',
+        'transition-[opacity,scale] duration-200 ease-out',
+        'starting:opacity-0 starting:scale-95',
+        isLeaving && 'opacity-0 scale-95',
         'w-[20rem] p-2 space-y-3',
         'scroll-mt-8',
         'rounded-2xl',
@@ -222,6 +223,6 @@ export default function PhotoRecipeOverlay({
         {renderDataSquare(bwAdjustment ?? 0, 'BW ADJ', 'col-span-3')}
         {renderDataSquare(bwMagentaGreen ?? 0, 'BW M/G', 'col-span-3')}
       </div>
-    </motion.div>
+    </div>
   );
 }

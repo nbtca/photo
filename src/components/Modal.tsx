@@ -1,7 +1,6 @@
 'use client';
 
 import { ReactNode, RefObject, useEffect, useRef, useState } from 'react';
-import { motion } from 'framer-motion';
 import { clsx } from 'clsx/lite';
 import useClickInsideOutside from '@/utility/useClickInsideOutside';
 import { useRouter } from 'next/navigation';
@@ -9,7 +8,6 @@ import AnimateItems from './AnimateItems';
 import { PATH_ROOT } from '@/app/path';
 import usePrefersReducedMotion from '@/utility/usePrefersReducedMotion';
 import useEscapeHandler from '@/utility/useEscapeHandler';
-import { useTheme } from 'next-themes';
 
 export default function Modal({
   onClosePath,
@@ -45,8 +43,6 @@ export default function Modal({
     }
   }, []);
 
-  const { resolvedTheme } = useTheme();
-
   useClickInsideOutside({
     htmlElements,
     onClickOutside: () => {
@@ -67,23 +63,17 @@ export default function Modal({
   });
 
   return (
-    <motion.div
+    <div
       className={clsx(
         'fixed inset-0 z-50 flex justify-center',
         anchor === 'top'
           ? 'items-start pt-4 sm:pt-12 lg:pt-24'
           : 'items-center',
-        'bg-white dark:bg-black',
+        'bg-white/90 dark:bg-black/80',
+        !prefersReducedMotion &&
+          'transition-colors duration-300 ease-out ' +
+          'starting:bg-white/0 dark:starting:bg-black/0',
       )}
-      initial={!prefersReducedMotion
-        ? { backgroundColor: resolvedTheme === 'dark'
-          ? 'rgba(0, 0, 0, 0)'
-          : 'rgba(255, 255, 255, 0)' }
-        : false}
-      animate={{ backgroundColor: resolvedTheme === 'dark'
-        ? 'rgba(0, 0, 0, 0.80)'
-        : 'rgba(255, 255, 255, 0.90)' }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
     >
       <AnimateItems
         duration={fast ? 0.1 : 0.3}
@@ -106,6 +96,6 @@ export default function Modal({
           {children}
         </div>]}
       />
-    </motion.div>
+    </div>
   );
 };

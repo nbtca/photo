@@ -44,7 +44,7 @@ import LoaderButton from '@/components/primitives/LoaderButton';
 import Tooltip from '@/components/Tooltip';
 import ZoomControls, { ZoomControlsRef }
   from '@/components/image/zoom/ZoomControls';
-import { AnimatePresence } from 'framer-motion';
+import usePresence from '@/utility/usePresence';
 import useRecipeOverlay from '../recipe/useRecipeOverlay';
 import PhotoRecipeOverlay from '@/recipe/PhotoRecipeOverlay';
 import PhotoRecipe from '@/recipe/PhotoRecipe';
@@ -188,6 +188,10 @@ export default function PhotoLarge({
     ref: refRecipe,
     refTriggers,
   });
+  const recipeOverlay = usePresence(
+    isShowingRecipeOverlay || shouldDebugRecipeOverlays,
+    200,
+  );
 
   const tags = sortTagsArray(photo.tags, primaryTag);
 
@@ -278,20 +282,17 @@ export default function PhotoLarge({
         !(isShowingRecipeOverlay || shouldDebugRecipeOverlays) &&
           'pointer-events-none',
       )}>
-        <AnimatePresence>
-          {(isShowingRecipeOverlay || shouldDebugRecipeOverlays) &&
-            photo.recipeData &&
-            photo.film &&
-              <PhotoRecipeOverlay
-                ref={refRecipe}
-                title={photo.recipeTitle}
-                data={photo.recipeData}
-                film={photo.film}
-                iso={photo.isoFormatted}
-                exposure={photo.exposureCompensationFormatted}
-                onClose={hideRecipeOverlay}
-              />}
-        </AnimatePresence>
+        {recipeOverlay.value && photo.recipeData && photo.film &&
+          <PhotoRecipeOverlay
+            ref={refRecipe}
+            title={photo.recipeTitle}
+            data={photo.recipeData}
+            film={photo.film}
+            iso={photo.isoFormatted}
+            exposure={photo.exposureCompensationFormatted}
+            onClose={hideRecipeOverlay}
+            isLeaving={recipeOverlay.isLeaving}
+          />}
       </div>
     </div>;
 
