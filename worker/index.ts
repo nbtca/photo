@@ -1,4 +1,5 @@
 import { type AppEnv, type Session, getSession } from './auth';
+import { MAX_BATCH } from './batch';
 import { cached, invalidate, pruneCache } from './cache';
 import { mutations } from './mutations';
 import { cacheScope, queries } from './query';
@@ -132,7 +133,6 @@ interface Result {
   body: unknown
 }
 
-const MAX_BATCH = 50;
 
 async function run(
   name: string,

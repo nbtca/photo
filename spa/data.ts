@@ -1,3 +1,4 @@
+import { MAX_BATCH } from '../worker/batch';
 import { me } from './me';
 import { type Store, idbStore } from './store';
 
@@ -123,11 +124,11 @@ interface QueuedRead {
   reject: (error: unknown) => void
 }
 
-let queued: QueuedRead[] = [];
+const queued: QueuedRead[] = [];
 
 const sendQueued = async () => {
-  const batch = queued;
-  queued = [];
+  const batch = queued.splice(0, MAX_BATCH);
+  if (queued.length) { setTimeout(sendQueued); }
   if (batch.length === 1) {
     const [{ name, args, resolve, reject }] = batch;
     return fetchJson(name, args).then(resolve, reject);

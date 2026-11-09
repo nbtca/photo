@@ -115,6 +115,22 @@ describe('spa data cache', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('splits reads beyond the Worker limit into several requests', async () => {
+    const fetchMock = vi.fn(async (url: string, init: RequestInit) =>
+      new Response(url === '/api/rpc'
+        ? JSON.stringify((JSON.parse(String(init.body)) as unknown[])
+          .map(() => ({ status: 200, body: 'ok' })))
+        : JSON.stringify('ok')));
+    global.fetch = fetchMock as unknown as typeof fetch;
+    setStore(undefined);
+
+    await Promise.all(Array.from({ length: 51 }, (_, index) =>
+      rpc('getPhotos', { split: index })));
+    expect(fetchMock.mock.calls.map(([url, init]) => url === '/api/rpc'
+      ? JSON.parse(String(init.body)).length
+      : url)).toEqual([50, '/api/rpc/getPhotos']);
+  });
+
   it('matches the Worker queries', () => {
     expect([...READS].sort()).toEqual(Object.keys(queries).sort());
   });
