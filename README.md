@@ -38,7 +38,7 @@ In Zero Trust, add a self-hosted application for `photo.nbtca.space` with Logto 
 ```sh
 pnpm install
 pnpm test        # builds, checks the bundle budget, then runs the Worker with test-signed Access tokens
-pnpm test:unit   # upstream's unit tests
+pnpm test:unit   # unit tests with Vitest, using the site's Vite config
 pnpm typecheck
 pnpm lint
 ```
