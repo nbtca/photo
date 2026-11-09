@@ -88,9 +88,9 @@ async function getFile(req: Request, name: string, env: AppEnv, session: Session
   if (!object) return error(404, 'Image not found');
   const headers = new Headers({
     ETag: object.httpEtag,
+    // A browser keeps photos it has shown after its member signs out. Varying on
+    // Cookie would refetch every photo each time Access renews its session.
     'Cache-Control': 'private, max-age=31536000, immutable',
-    // Without this a signed-out browser keeps serving cached photos.
-    Vary: 'Cookie',
   });
   object.writeHttpMetadata(headers);
   return 'body' in object
