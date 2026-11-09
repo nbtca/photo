@@ -6,7 +6,7 @@
  * 1. Content width = nav width (LAYOUT_MAIN) unless sidebar sits beside at 3xl
  * 2. Sidebar beside only at 3xl (77rem / 1232px in tailwind.css); offset keeps
  *    main optically centered with the nav
- * 3. Body is `3xl:flex items-center` with shell `self-stretch` (app/layout.tsx)
+ * 3. Body is `3xl:flex items-center` with shell `self-stretch` (spa/main.tsx)
  * 4. With EXPRESSIVE_LAYOUT: matted /grid feed (no sidebar) may exceed nav
  *    width at lg+ (LAYOUT_FEED); below lg it is full content width so
  *    horizontal photos meet page margins (gap-x-1 / gap-y-2)

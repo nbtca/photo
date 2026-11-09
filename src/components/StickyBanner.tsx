@@ -41,7 +41,7 @@ export default function StickyBanner({
       ref={ref}
       className={clsx(
         containerClassName,
-        // Cancel the shell margin in app/layout.tsx
+        // Cancel the shell margin in spa/main.tsx
         // so the bar meets the viewport
         isOutOfPosition && clsx(
           '-mx-3 w-[calc(100%+1.5rem)]',
