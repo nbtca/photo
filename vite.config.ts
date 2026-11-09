@@ -78,13 +78,49 @@ const serverActions = (): Plugin => ({
   },
 });
 
+// Pages load their code after the entry runs, one round trip later. Most visits
+// land on these routes, whose chunks every photo page shares, so the HTML
+// starts them alongside the entry.
+const PRELOADED_ROUTES = ['/app/page.tsx', '/app/p/[photoId]/page.tsx'];
+
+const preloadRoutes = (): Plugin => ({
+  name: 'preload-routes',
+  apply: 'build',
+  transformIndexHtml: {
+    order: 'post',
+    handler(html, { bundle }) {
+      const chunks = Object.values(bundle ?? {})
+        .filter(output => output.type === 'chunk');
+      const imports = new Map(chunks.map(({ fileName, imports }) =>
+        [fileName, imports]));
+      const files = new Set<string>();
+      const add = (file: string) => {
+        if (files.has(file)) { return; }
+        files.add(file);
+        imports.get(file)?.forEach(add);
+      };
+      chunks
+        .filter(({ facadeModuleId }) => PRELOADED_ROUTES
+          .some(route => facadeModuleId?.endsWith(route)))
+        .forEach(({ fileName }) => add(fileName));
+      return [...files]
+        .filter(file => !html.includes(file))
+        .map(file => ({
+          tag: 'link',
+          attrs: { rel: 'modulepreload', crossorigin: true, href: `/${file}` },
+          injectTo: 'head' as const,
+        }));
+    },
+  },
+});
+
 const next = (specifier: string, file: string) => ({
   find: new RegExp(`^${specifier.replace(/[/.]/g, '\\$&')}$`),
   replacement: spa(file),
 });
 
 export default defineConfig({
-  plugins: [serverActions(), asyncComponents(), react()],
+  plugins: [serverActions(), asyncComponents(), react(), preloadRoutes()],
   define: {
     'process.env': JSON.stringify(ENV),
     'process.version': JSON.stringify(''),
