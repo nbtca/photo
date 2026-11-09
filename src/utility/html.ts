@@ -1,32 +1,44 @@
-import sanitizeHtml from 'sanitize-html';
+const FORMATTING_TAGS = new Set(['B', 'STRONG', 'I', 'EM', 'U']);
+const DISCARDED_TAGS = 'script, style, textarea, option, noscript, template';
 
-const ALLOWED_FORMATTING_TAGS = ['b', 'strong', 'i', 'em', 'u', 'br', 'a'];
+const escape = (text: string) => text
+  .replaceAll('&', '&amp;')
+  .replaceAll('<', '&lt;')
+  .replaceAll('>', '&gt;')
+  .replaceAll('"', '&quot;');
 
-const replaceNewlinesWithBr = (text: string) =>
-  text.replace(/\r\n|\n|\r/g, '<br />');
+const parse = (html: string) => {
+  const { body } = new DOMParser().parseFromString(html, 'text/html');
+  body.querySelectorAll(DISCARDED_TAGS).forEach(node => node.remove());
+  return body;
+};
+
+const serialize = (node: Node): string => {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return escape(node.textContent ?? '');
+  }
+  if (!(node instanceof Element)) { return ''; }
+  const children = [...node.childNodes].map(serialize).join('');
+  const tag = node.tagName.toLowerCase();
+  if (tag === 'br') { return '<br />'; }
+  if (FORMATTING_TAGS.has(node.tagName)) {
+    return `<${tag}>${children}</${tag}>`;
+  }
+  if (tag === 'a') {
+    const href = node.getAttribute('href') ?? '';
+    const safeHref = /^https:/i.test(href.trim())
+      ? ` href="${escape(href.trim())}"`
+      : '';
+    return `<a${safeHref} target="_blank">${children}</a>`;
+  }
+  return children;
+};
 
 export const safelyParseFormattedHtml = (text: string) =>
-  sanitizeHtml(replaceNewlinesWithBr(text), {
-    allowedTags: ALLOWED_FORMATTING_TAGS,
-    allowedSchemes: ['https'],
-    transformTags: {
-      a: (tagName, attribs) => {
-        return {
-          tagName,
-          attribs: {
-            href: attribs.href,
-            target: '_blank',
-          },
-        };
-      },
-    },
-  });
+  serialize(parse(text.replace(/\r\n|\n|\r/g, '<br />')));
 
 export const htmlToPlainText = (html: string) =>
-  sanitizeHtml(html.replace(/<br\s*\/?>/gi, ' '), {
-    allowedTags: [],
-    allowedAttributes: {},
-  })
+  (parse(html.replace(/<br\s*\/?>/gi, ' ')).textContent ?? '')
     .replace(/\s+/g, ' ')
     .trim();
 
