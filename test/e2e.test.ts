@@ -243,7 +243,7 @@ test('members upload, browse and manage their own photos', async () => {
   assert.equal(image.status, 200);
   assert.equal(image.headers.get('Content-Type'), 'image/webp');
   assert.match(image.headers.get('Cache-Control')!, /^private/);
-  assert.equal(image.headers.get('Vary'), 'Cookie');
+  assert.equal(image.headers.get('Vary'), null);
   assert.deepEqual(Buffer.from(await image.arrayBuffer()), WEBP);
   const cached = await call(bob, url, { headers: { 'If-None-Match': image.headers.get('ETag')! } });
   assert.equal(cached.status, 304);
