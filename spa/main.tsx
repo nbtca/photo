@@ -1,4 +1,3 @@
-import { Buffer } from 'buffer';
 import { lazy, Suspense } from 'react';
 import { createRoot } from 'react-dom/client';
 import { clsx } from 'clsx/lite';
@@ -75,9 +74,6 @@ function App() {
     </RouterProvider>
   );
 }
-
-// The EXIF parsers were written for Node and expect a global Buffer.
-globalThis.Buffer = Buffer;
 
 const root = createRoot(document.getElementById('root')!);
 

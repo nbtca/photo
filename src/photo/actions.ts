@@ -47,39 +47,21 @@ import {
   pathForPhoto,
   pathForTag,
 } from '@/app/path';
-import {
-  blurImageFromUrl,
-  convertFormDataToPhotoDbInsertAndLookupRecipeTitle,
-  deletePhotoAndFiles,
-  extractImageDataFromBlobPath,
-  propagateRecipeTitleIfNecessary,
-} from './server';
 import { TAG_FAVS, Tags, isPhotoFav, isTagFavs } from '@/tag';
 import { convertPhotoToPhotoDbInsert, Photo } from '.';
 import { runAuthenticatedAdminServerAction } from '@/auth/server';
 import { AiImageQuery, getAiImageQuery, getAiTextFieldsToGenerate } from './ai';
-import { streamOpenAiImageQuery } from '@/platforms/openai';
 import {
   AI_TEXT_AUTO_GENERATED_FIELDS,
   AI_CONTENT_GENERATION_ENABLED,
 } from '@/app/config';
-import { generateAiImageQueries } from './ai/server';
 import { createStreamableValue } from '@ai-sdk/rsc';
-import {
-  convertUploadToPhoto,
-} from './storage/server';
 import { UrlAddStatus } from '@/admin/AdminUploadsClient';
 import { after } from 'next/server';
-import {
-  getColorFieldsForImageUrl,
-  getColorFieldsForPhotoDbInsert,
-  getColorFromAI,
-} from '@/photo/color/server';
 import {
   getKeyColorFromColorData,
   getKeyColorFromPhoto,
 } from '@/photo/color/client';
-import { shouldBackfillPhotoStorage } from './update/server';
 import { getAlbumTitlesFromFormData } from '@/album/form';
 import {
   addAlbumTitlesToPhoto,
@@ -88,10 +70,49 @@ import {
 } from '@/album/server';
 import { addPhotoAlbumIds } from '@/album/query';
 import type { VisibilityValue } from './visibility';
+import { lazily } from '@/utility/lazily';
 import {
   COMMAND_K_PHOTO_LIMIT,
   getPhotosQueryData,
 } from '@/query/data';
+
+// Upload processing loads on first use so that pages listing photos stay light
+const photoServer = () => import('./server');
+const blurImageFromUrl = lazily(photoServer, 'blurImageFromUrl');
+const convertFormDataToPhotoDbInsertAndLookupRecipeTitle = lazily(
+  photoServer,
+  'convertFormDataToPhotoDbInsertAndLookupRecipeTitle',
+);
+const deletePhotoAndFiles = lazily(photoServer, 'deletePhotoAndFiles');
+const extractImageDataFromBlobPath = lazily(
+  photoServer,
+  'extractImageDataFromBlobPath',
+);
+const propagateRecipeTitleIfNecessary = lazily(
+  photoServer,
+  'propagateRecipeTitleIfNecessary',
+);
+const openAi = () => import('@/platforms/openai');
+const streamOpenAiImageQuery = lazily(openAi, 'streamOpenAiImageQuery');
+const aiServer = () => import('./ai/server');
+const generateAiImageQueries = lazily(aiServer, 'generateAiImageQueries');
+const storageServer = () => import('./storage/server');
+const convertUploadToPhoto = lazily(storageServer, 'convertUploadToPhoto');
+const colorServer = () => import('@/photo/color/server');
+const getColorFieldsForImageUrl = lazily(
+  colorServer,
+  'getColorFieldsForImageUrl',
+);
+const getColorFieldsForPhotoDbInsert = lazily(
+  colorServer,
+  'getColorFieldsForPhotoDbInsert',
+);
+const getColorFromAI = lazily(colorServer, 'getColorFromAI');
+const updateServer = () => import('./update/server');
+const shouldBackfillPhotoStorage = lazily(
+  updateServer,
+  'shouldBackfillPhotoStorage',
+);
 
 // Private actions
 
