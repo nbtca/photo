@@ -93,23 +93,71 @@ const open = () => session ??= (async () => {
 
 export class Unauthorized extends Error {}
 
+const failure = (name: string, status: number, body: unknown) => {
+  if (status === 401) {
+    window.dispatchEvent(new Event('unauthorized'));
+    return new Unauthorized();
+  }
+  const { error, outage } =
+    (body ?? {}) as { error?: string, outage?: boolean };
+  if (outage) window.dispatchEvent(new Event('outage'));
+  return new Error(error ?? `${name}: ${status}`);
+};
+
 const fetchJson = async (name: string, args: unknown[]) => {
   const response = await fetch(`/api/rpc/${name}`, {
     method: 'POST',
     body: JSON.stringify(args),
   });
-  if (response.status === 401) {
-    window.dispatchEvent(new Event('unauthorized'));
-    throw new Unauthorized();
-  }
   if (!response.ok) {
-    const body: { error?: string, outage?: boolean } | null =
-      await response.json().catch(() => null);
-    if (body?.outage) window.dispatchEvent(new Event('outage'));
-    throw new Error(body?.error ?? `${name}: ${response.status}`);
+    const body = await response.json().catch(() => null);
+    throw failure(name, response.status, body);
   }
   return response.text();
 };
+
+interface QueuedRead {
+  name: string
+  args: unknown[]
+  resolve: (json: string) => void
+  reject: (error: unknown) => void
+}
+
+let queued: QueuedRead[] = [];
+
+const sendQueued = async () => {
+  const batch = queued;
+  queued = [];
+  if (batch.length === 1) {
+    const [{ name, args, resolve, reject }] = batch;
+    return fetchJson(name, args).then(resolve, reject);
+  }
+  try {
+    const response = await fetch('/api/rpc', {
+      method: 'POST',
+      body: JSON.stringify(batch.map(({ name, args }) => [name, args])),
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw failure('batch', response.status, body);
+    }
+    const results: { status: number, body: unknown }[] = await response.json();
+    batch.forEach(({ name, resolve, reject }, index) => {
+      const { status, body } = results[index];
+      if (status === 200) { resolve(JSON.stringify(body)); }
+      else { reject(failure(name, status, body)); }
+    });
+  } catch (error) {
+    batch.forEach(({ reject }) => reject(error));
+  }
+};
+
+// Reads requested while a page renders go out together in one request.
+const fetchRead = (name: string, args: unknown[]) =>
+  new Promise<string>((resolve, reject) => {
+    if (!queued.length) { setTimeout(sendQueued); }
+    queued.push({ name, args, resolve, reject });
+  });
 
 const revalidate = async (
   current: Store,
@@ -121,7 +169,7 @@ const revalidate = async (
   if (revalidating.has(key)) { return; }
   revalidating.add(key);
   try {
-    const json = await fetchJson(name, args);
+    const json = await fetchRead(name, args);
     await current.set(key, { json, at: Date.now() });
     if (json !== previous) { refreshed(); }
   } catch {
@@ -133,7 +181,7 @@ const revalidate = async (
 
 const readJson = async (name: string, args: unknown[], key: string) => {
   const current = await open();
-  if (!current) { return fetchJson(name, args); }
+  if (!current) { return fetchRead(name, args); }
 
   await clearing;
   const hit = await current.get(key).catch(() => undefined);
@@ -144,7 +192,7 @@ const readJson = async (name: string, args: unknown[], key: string) => {
     }
     return hit.json;
   }
-  const json = await fetchJson(name, args);
+  const json = await fetchRead(name, args);
   current.set(key, { json, at: Date.now() }).catch(() => {});
   return json;
 };

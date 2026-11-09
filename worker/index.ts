@@ -127,6 +127,44 @@ async function removeAbandoned(env: AppEnv) {
   }
 }
 
+interface Result {
+  status: number
+  body: unknown
+}
+
+const MAX_BATCH = 50;
+
+async function run(
+  name: string,
+  args: unknown[],
+  env: AppEnv,
+  session: Session,
+  ctx: ExecutionContext,
+): Promise<Result> {
+  const cacheable = Object.hasOwn(queries, name);
+  const writes = Object.hasOwn(mutations, name) && !READS.has(name);
+  const load = async () => (await handlers[name](env, session, ...args)) ?? null;
+  // Handlers reject with a Response before they write anything.
+  let rejected = false;
+  try {
+    const body = cacheable
+      ? await cached(
+        env,
+        [name, ...cacheScope(name, args, session), args],
+        load,
+        (stored) => ctx.waitUntil(stored),
+      )
+      : await load();
+    return { status: 200, body };
+  } catch (thrown) {
+    if (!(thrown instanceof Response)) throw thrown;
+    rejected = true;
+    return { status: thrown.status, body: { error: await thrown.text() } };
+  } finally {
+    if (writes && !rejected) await invalidate(env);
+  }
+}
+
 async function call(
   req: Request,
   name: string,
@@ -137,29 +175,29 @@ async function call(
   if (!Object.hasOwn(handlers, name)) return error(404, 'Unknown call');
   const args: unknown = await req.json().catch(() => null);
   if (!Array.isArray(args)) return error(400, 'Invalid arguments');
-  const cacheable = Object.hasOwn(queries, name) && !READS.has(name);
-  const writes = Object.hasOwn(mutations, name) && !READS.has(name);
-  const load = async () => (await handlers[name](env, session, ...args)) ?? null;
-  // Handlers reject with a Response before they write anything.
-  let rejected = false;
-  try {
-    return Response.json(
-      cacheable
-        ? await cached(
-          env,
-          [name, ...cacheScope(name, args, session), args],
-          load,
-          (stored) => ctx.waitUntil(stored),
-        )
-        : await load(),
+  const { status, body } = await run(name, args, env, session, ctx);
+  return Response.json(body, { status });
+}
+
+// Runs several reads in one request, each cached on its own.
+async function batch(req: Request, env: AppEnv, session: Session, ctx: ExecutionContext) {
+  const calls: unknown = await req.json().catch(() => null);
+  const valid =
+    Array.isArray(calls) &&
+    calls.length <= MAX_BATCH &&
+    calls.every(
+      (entry) =>
+        Array.isArray(entry) &&
+        typeof entry[0] === 'string' &&
+        Object.hasOwn(queries, entry[0]) &&
+        Array.isArray(entry[1]),
     );
-  } catch (thrown) {
-    if (!(thrown instanceof Response)) throw thrown;
-    rejected = true;
-    return error(thrown.status, await thrown.text());
-  } finally {
-    if (writes && !rejected) await invalidate(env);
-  }
+  if (!valid) return error(400, 'Invalid batch');
+  return Response.json(
+    await Promise.all(
+      (calls as [string, unknown[]][]).map(([name, args]) => run(name, args, env, session, ctx)),
+    ),
+  );
 }
 
 export default {
@@ -196,6 +234,7 @@ async function handle(req: Request, env: AppEnv, ctx: ExecutionContext) {
     if (method === 'DELETE') return deleteFile(name, env, session);
   }
 
+  if (pathname === '/api/rpc' && method === 'POST') return batch(req, env, session, ctx);
   const name = pathname.match(/^\/api\/rpc\/(\w+)$/)?.[1];
   if (name && method === 'POST') return call(req, name, env, session, ctx);
 
