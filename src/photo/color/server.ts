@@ -32,7 +32,11 @@ const convertRgbToOklch = (red: number, green: number, blue: number): Oklch => {
   const a = 1.9779984951 * L - 2.4285922050 * M + 0.4505937099 * S;
   const bb = 0.0259040371 * L + 0.7827717662 * M - 0.8086757660 * S;
   const h = Math.atan2(bb, a) * (180 / Math.PI);
-  return { l: round(l), c: round(Math.hypot(a, bb)), h: round(h < 0 ? h + 360 : h) };
+  return {
+    l: round(l),
+    c: round(Math.hypot(a, bb)),
+    h: round(h < 0 ? h + 360 : h),
+  };
 };
 
 export const convertHexToOklch = (hex: string): Oklch => {

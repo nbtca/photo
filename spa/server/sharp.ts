@@ -1,5 +1,9 @@
 import { Buffer } from 'buffer';
 
+// The EXIF parsers that run alongside this were written for Node and expect a
+// global Buffer.
+globalThis.Buffer ??= Buffer;
+
 // Implements the part of sharp's chain the app uses, on a canvas.
 // Output is WebP, except for the small data URLs built after withMetadata(),
 // which stay JPEG. Canvas output carries no EXIF.
