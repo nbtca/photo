@@ -60,6 +60,11 @@ const layoutsFor = (file: string) =>
     .sort(([a], [b]) => b.length - a.length)
     .map(([, { default: Layout }]) => Layout);
 
+// A page can export prefetch() from a sibling data.ts, so its first reads
+// start alongside its code instead of after it loads.
+const prefetchers = import.meta.glob('../app/**/data.ts', { eager: true }) as
+  Record<string, { prefetch?: (params: Record<string, string>) => unknown }>;
+
 const routes = pages
   .map(([file, load]) => {
     const segments = file
@@ -78,13 +83,14 @@ const routes = pages
       names,
       Page: lazy(load),
       load,
+      prefetch: prefetchers[file.replace(/page\.tsx$/, 'data.ts')]?.prefetch,
       layouts: layoutsFor(file),
     };
   })
   .sort((a, b) => a.names.length - b.names.length);
 
 const matchRoute = (pathname: string) => {
-  for (const { pattern, names, Page, load, layouts } of routes) {
+  for (const { pattern, names, Page, load, prefetch, layouts } of routes) {
     const match = pathname.match(pattern);
     if (match) {
       const params = Object.fromEntries(names.map((name, index) => [
@@ -93,14 +99,16 @@ const matchRoute = (pathname: string) => {
           ? match[index + 1].replace(/^(?!%2F|\/)/i, '/')
           : match[index + 1],
       ]));
-      return { Page, load, layouts, params };
+      return { Page, load, prefetch, layouts, params };
     }
   }
 };
 
 // Starts fetching the current page's code while sign-in is still checked.
 export const preloadRoute = () => {
-  matchRoute(location.pathname)?.load().catch(() => undefined);
+  const route = matchRoute(location.pathname);
+  route?.load().catch(() => undefined);
+  route?.prefetch?.(route.params);
 };
 
 const keyed = <T,>(value: T, key: string) =>

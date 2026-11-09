@@ -1,25 +1,18 @@
 import { generateOgImageMetaForPhotos } from '@/photo';
 import PhotosEmptyState from '@/photo/PhotosEmptyState';
 import { Metadata } from 'next/types';
-import { cache } from 'react';
-import { getPhotos } from '@/photo/query';
 import { GRID_HOMEPAGE_ENABLED, USER_DEFAULT_SORT_OPTIONS } from '@/app/config';
 import { NULL_CATEGORY_DATA } from '@/category/data';
 import PhotoExpressivePage from '@/photo/PhotoExpressivePage';
 import PhotoGridPage from '@/photo/PhotoGridPage';
 import { getDataForCategoriesCached } from '@/category/cache';
-import { getPhotosMetaCached } from '@/photo/cache';
-import { FEED_META_QUERY_OPTIONS, feedQueryOptions } from '@/feed';
+import { getHomeCount, getHomeFeedCount, getHomePhotos } from './data';
 
 export const dynamic = 'force-static';
 export const maxDuration = 60;
 
-const getPhotosCached = cache(() => getPhotos(feedQueryOptions({
-  isGrid: GRID_HOMEPAGE_ENABLED,
-})));
-
 export async function generateMetadata(): Promise<Metadata> {
-  const photos = await getPhotosCached()
+  const photos = await getHomePhotos()
     .catch(() => []);
   return generateOgImageMetaForPhotos(photos);
 }
@@ -31,12 +24,12 @@ export default async function HomePage() {
     photosCountWithExcludes,
     categories,
   ] = await Promise.all([
-    getPhotosCached()
+    getHomePhotos()
       .catch(() => []),
-    getPhotosMetaCached(FEED_META_QUERY_OPTIONS)
+    getHomeFeedCount()
       .then(({ count }) => count)
       .catch(() => 0),
-    getPhotosMetaCached()
+    getHomeCount()
       .then(({ count }) => count)
       .catch(() => 0),
     GRID_HOMEPAGE_ENABLED
