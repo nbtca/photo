@@ -99,7 +99,6 @@ export interface PhotoDbInsert extends PhotoExif {
 export interface PhotoDb extends
   Omit<PhotoDbInsert, 'takenAt' | 'tags'> {
   ownerName?: string
-  editable?: boolean
   updatedAt: Date
   createdAt: Date
   takenAt: Date

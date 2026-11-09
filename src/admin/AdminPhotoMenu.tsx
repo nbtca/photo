@@ -23,6 +23,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import MoreMenu, { MoreMenuSection } from '@/components/more/MoreMenu';
 import { renderMenuItemCheck } from '@/components/more/MoreMenuItem';
 import { useAppState } from '@/app/AppState';
+import { useMe } from '@spa/me';
 import { RevalidatePhoto } from '@/photo/InfinitePhotoScroll';
 import { MdOutlineFileDownload } from 'react-icons/md';
 import IconFavs from '@/components/icons/IconFavs';
@@ -51,6 +52,8 @@ export default function AdminPhotoMenu({
   alwaysVisible?: boolean
 }) {
   const { isUserSignedIn, registerAdminUpdate } = useAppState();
+  const me = useMe();
+  const isEditable = me?.admin || photo.ownerName === me?.name;
 
   const appText = useAppText();
 
@@ -190,7 +193,7 @@ export default function AdminPhotoMenu({
   , [sectionMain, sectionDelete]);
 
   return (
-    (isUserSignedIn && photo.editable !== false) || alwaysVisible
+    (isUserSignedIn && isEditable) || alwaysVisible
       ? <>
         <MoreMenu {...{
           ...props,

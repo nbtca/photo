@@ -44,26 +44,40 @@ export const slug = (value: string) =>
 
 const parse = (value: unknown) => (typeof value === 'string' ? JSON.parse(value) : null);
 
-export const present =
-  (session: Session) =>
-    ({
-      owner_sub,
-      make_slug,
-      model_slug,
-      lens_make_slug,
-      lens_model_slug,
-      ...row
-    }: Row): Row => ({
-      ...row,
-      tags: parse(row.tags),
-      recipe_data: parse(row.recipe_data),
-      color_data: parse(row.color_data),
-      hidden: !!row.hidden,
-      exclude_from_feeds: !!row.exclude_from_feeds,
-      editable: session.admin || owner_sub === session.sub,
-    });
+const present = ({
+  owner_sub,
+  make_slug,
+  model_slug,
+  lens_make_slug,
+  lens_model_slug,
+  ...row
+}: Row): Row => ({
+  ...row,
+  tags: parse(row.tags),
+  recipe_data: parse(row.recipe_data),
+  color_data: parse(row.color_data),
+  hidden: !!row.hidden,
+  exclude_from_feeds: !!row.exclude_from_feeds,
+});
 
-export function conditions(options: Options, session: Session) {
+const includesHidden = (options: unknown) =>
+  typeof options === 'object' &&
+  options !== null &&
+  (options as Options).hidden !== undefined &&
+  (options as Options).hidden !== 'exclude';
+
+const personal = (session: Session, isPersonal: boolean) =>
+  isPersonal ? [session.sub, session.admin] : [];
+
+// Hidden photos are the only results that differ between members, so every
+// other read is cached once for everyone.
+export const cacheScope = (name: string, args: unknown[], session: Session) =>
+  personal(
+    session,
+    name === 'getPhoto' ? Boolean(args[1]) : args.some(includesHidden),
+  );
+
+function conditions(options: Options, session: Session) {
   const wheres = ['1 = 1'];
   const values: Value[] = [];
   const where = (clause: string, ...bound: Value[]) => {
@@ -153,24 +167,6 @@ const COUNTED = 'COUNT(*) AS count, MAX(updated_at) AS last_modified';
 
 export type Handler = (env: AppEnv, session: Session, ...args: any[]) => Promise<unknown>;
 
-export const sessionFree = new Set([
-  'getPhotosMostRecentUpdate',
-  'getAllPublicPhotoIds',
-  'getAllPhotoIdsWithUpdatedAt',
-  'getUniqueCameras',
-  'getUniqueLenses',
-  'getUniqueTags',
-  'getUniqueRecipes',
-  'getUniqueYears',
-  'getUniqueFilms',
-  'getUniqueFocalLengths',
-  'getLibrary',
-  'getAlbumFromSlug',
-  'getAlbumsWithMeta',
-  'getAlbumTitlesForPhoto',
-  'getTagsForAlbum',
-]);
-
 export const queries: Record<string, Handler> = {
   async getPhotos(env, session, options: Options = {}) {
     const { from, values } = conditions(options, session);
@@ -179,7 +175,7 @@ export const queries: Record<string, Handler> = {
       `SELECT p.* ${from} ${orderBy(options)} LIMIT ? OFFSET ?`,
       [...values, limitOf(options), Math.max(0, Math.floor(Number(options.offset)) || 0)],
     );
-    return rows.map(present(session));
+    return rows.map(present);
   },
 
   async getPhotoIds(env, session, options: Options = {}) {
@@ -200,7 +196,8 @@ export const queries: Record<string, Handler> = {
 
   async getPhotosNearId(env, session, photoId: string, options: Options = {}) {
     const { from, values } = conditions(options, session);
-    const ids = await cached(env, ['order', session.sub, session.admin, options], async () => {
+    const scope = personal(session, includesHidden(options));
+    const ids = await cached(env, ['order', ...scope, options], async () => {
       const rows = await all<{ id: string }>(env, `SELECT p.id ${from} ${orderBy(options)}`, values);
       return rows.map(({ id }) => id);
     });
@@ -215,7 +212,7 @@ export const queries: Record<string, Handler> = {
     );
     const byId = new Map(rows.map((row) => [row.id, row]));
     return {
-      photos: wanted.flatMap((id) => (byId.has(id) ? [present(session)(byId.get(id)!)] : [])),
+      photos: wanted.flatMap((id) => (byId.has(id) ? [present(byId.get(id)!)] : [])),
       indexNumber: current + 1,
     };
   },
@@ -246,7 +243,7 @@ export const queries: Record<string, Handler> = {
       'SELECT * FROM photos WHERE id = ? AND (hidden = 0 OR (? AND (? OR owner_sub = ?)))',
       [String(id), includeHidden ? 1 : 0, session.admin ? 1 : 0, session.sub],
     );
-    return row ? present(session)(row) : null;
+    return row ? present(row) : null;
   },
 
   async getPhotosMostRecentUpdate(env) {
