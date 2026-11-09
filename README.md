@@ -11,10 +11,10 @@ It is a fork of [exif-photo-blog](https://github.com/sambecker/exif-photo-blog) 
 - **Storage**: photos live in a private [R2](https://developers.cloudflare.com/r2/) bucket and are only served to signed-in members.
 - **Image processing**: the browser re-encodes every photo to WebP on a canvas, so stored files carry no EXIF or GPS data. Camera settings and colors are read before that and kept in D1.
 - **Access**: [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/access-controls/) guards the whole site, and every member can upload.
-- **Caching**: [Cloudflare does not support Cache API behind Access](https://developers.cloudflare.com/workers/runtime-apis/cache/), so the Worker caches read results in a D1 table for an hour. A hit reads two rows by primary key. Any write moves the cache epoch, which invalidates every entry at once, and the daily cron deletes expired and outdated entries. The browser keeps results in IndexedDB, shows them at once and refreshes them in the background.
+- **Caching**: [Cloudflare does not support Cache API behind Access](https://developers.cloudflare.com/workers/runtime-apis/cache/), so the Worker caches read results in a D1 table for an hour. A hit reads two rows by primary key. Results are shared by all members unless they include hidden photos. Any successful write moves the cache epoch, which invalidates every entry at once, and the daily cron deletes expired and outdated entries. The browser sends the reads a page needs together in one request, keeps results in IndexedDB, shows them at once and refreshes them in the background. Photos are cached by the browser for a year, so a browser keeps photos it has shown after its member signs out.
 - **Placeholders**: photos carry no base64 blur image. The placeholder is the 200 px variant, which keeps list responses small.
 - **Storage ledger**: the `storage` table, kept up to date by triggers on `files`, holds bytes per member so quota checks never scan `files`.
-- **Removed**: AI text, share preview images, feeds, the configuration and insights pages, and re-syncing a photo from its file.
+- **Removed**: AI text, share preview images, feeds, places and maps, the configuration and insights pages, and re-syncing a photo from its file.
 
 ## Access
 
@@ -37,7 +37,7 @@ In Zero Trust, add a self-hosted application for `photo.nbtca.space` with Logto 
 
 ```sh
 pnpm install
-pnpm test        # builds, then runs the Worker with test-signed Access tokens
+pnpm test        # builds, checks the bundle budget, then runs the Worker with test-signed Access tokens
 pnpm test:unit   # upstream's unit tests
 pnpm typecheck
 pnpm lint
