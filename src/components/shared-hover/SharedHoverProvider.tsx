@@ -10,7 +10,7 @@ import {
   useState,
 } from 'react';
 import { SharedHoverContext, SharedHoverProps } from './state';
-import { AnimatePresence, motion } from 'framer-motion';
+import usePresence from '@/utility/usePresence';
 import ComponentSurface from '../primitives/surface/ComponentSurface';
 import clsx from 'clsx/lite';
 
@@ -170,35 +170,39 @@ function SharedHoverOverlay({
 
   // Prefer the snapshot from `showHover` so the hover never fades in empty,
   // and never repaints the previous trigger's content at the new position
-  const hoverContent = update?.key === hoverProps?.key
+  const hover = useMemo(() => hoverProps && { hoverProps, hoverStyle },
+    [hoverProps, hoverStyle]);
+  const { value: kept, isLeaving } = usePresence(hover, 200);
+  const shown = kept?.hoverProps;
+
+  const hoverContent = update?.key === shown?.key
     ? update?.content
-    : hoverProps?.content;
+    : shown?.content;
 
   return (
     <div className="relative inset-0 z-100 pointer-events-none">
-      <AnimatePresence>
-        {hoverProps &&
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            transition={{ duration: 0.2 }}
-            layoutId="hover"
-            className="fixed"
-            style={hoverStyle}
+      {shown &&
+          <div
+            className={clsx(
+              'fixed',
+              'transition-[opacity,translate,top,left,right] duration-200',
+              'starting:opacity-0 starting:translate-y-2.5',
+              isLeaving && 'opacity-0 translate-y-2.5',
+            )}
+            style={kept.hoverStyle}
           >
             <ComponentSurface
               className="max-w-none p-1!"
-              color={hoverProps.color}
+              color={shown.color}
             >
               <div
                 className={clsx(
                   'relative rounded-[10px] overflow-clip',
-                  hoverProps.color !== 'frosted-light' && 'bg-extra-dim',
+                  shown.color !== 'frosted-light' && 'bg-extra-dim',
                 )}
                 style={{
-                  width: hoverProps.width,
-                  height: hoverProps.height,
+                  width: shown.width,
+                  height: shown.height,
                 }}
               >
                 {/* Content */}
@@ -207,14 +211,13 @@ function SharedHoverOverlay({
                 <div className={clsx(
                   'absolute inset-0',
                   'border rounded-[10px]',
-                  hoverProps.color === 'frosted-light'
+                  shown.color === 'frosted-light'
                     ? 'border-gray-400/25'
                     : 'border-medium',
                 )} />
               </div>
             </ComponentSurface>
-          </motion.div>}
-      </AnimatePresence>
+          </div>}
     </div>
   );
 }

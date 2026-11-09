@@ -36,7 +36,6 @@ import { usePathname, useRouter } from 'next/navigation';
 import { KEY_COMMANDS } from '@/photo/key-commands';
 import { useAppText } from '@/i18n/state/client';
 import { getSortStateFromPath } from '@/photo/sort/path';
-import { motion } from 'framer-motion';
 import IconLibrary from '@/components/icons/IconLibrary';
 import { BiHomeAlt as HomeIcon } from 'react-icons/bi';
 import AppViewMenu from './AppViewMenu';
@@ -221,53 +220,57 @@ export default function AppToolbar({
           />}
       </Switcher>
       {!isInEmptyState &&
-        <motion.div
-          initial={animate ? { opacity: 0, width: 0 } : false}
-          animate={{
-            opacity: showViewMenu ? 1 : 0,
-            width: showViewMenu ? 'auto' : 0,
-          }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-        >
-          <AppViewMenuCompact
-            className="sm:hidden"
-            isViewFull={isViewFull}
-            isMasonry={MASONRY_GRID_ENABLED && isHome}
-            // Sort-aware paths retain the active sort while switching views
-            hrefGrid={isHome ? pathGrid : undefined}
-            hrefFull={isHome ? pathFull : undefined}
-            onSelectView={setIsPhotoSetFull}
-            isLoading={isViewSwitchLoading}
-            showSortItems={showSortControl}
-            sortConfig={sortConfig}
-            isOpen={isViewMenuOpen}
-            setIsOpen={isOpen => {
-              setIsViewMenuOpen(isOpen);
-              if (isOpen) {
-                setIsAdminMenuOpen(false);
-                setIsSortMenuOpen(false);
-              }
-            }}
-          />
-          <AppViewMenu
-            className="max-sm:hidden"
-            isViewFull={isViewFull}
-            isMasonry={MASONRY_GRID_ENABLED && isHome}
-            hrefGrid={isHome ? pathGrid : undefined}
-            hrefFull={isHome ? pathFull : undefined}
-            onSelectView={setIsPhotoSetFull}
-            showSortControl={showSortControl}
-            sortConfig={sortConfig}
-            isSortMenuOpen={isSortMenuOpen}
-            setIsSortMenuOpen={isOpen => {
-              setIsSortMenuOpen(isOpen);
-              if (isOpen) {
-                setIsAdminMenuOpen(false);
-                setIsViewMenuOpen(false);
-              }
-            }}
-          />
-        </motion.div>}
+        // Grid tracks animate between zero and the menu's natural width,
+        // which `width: auto` cannot.
+        <div className={clsx(
+          'grid transition-[grid-template-columns,opacity]',
+          'duration-200 ease-in-out',
+          showViewMenu
+            ? 'grid-cols-[1fr] opacity-100'
+            : 'grid-cols-[0fr] opacity-0',
+          animate && 'starting:grid-cols-[0fr] starting:opacity-0',
+        )}>
+          <div className="flex min-w-0 overflow-hidden">
+            <AppViewMenuCompact
+              className="sm:hidden"
+              isViewFull={isViewFull}
+              isMasonry={MASONRY_GRID_ENABLED && isHome}
+              // Sort-aware paths retain the active sort while switching views
+              hrefGrid={isHome ? pathGrid : undefined}
+              hrefFull={isHome ? pathFull : undefined}
+              onSelectView={setIsPhotoSetFull}
+              isLoading={isViewSwitchLoading}
+              showSortItems={showSortControl}
+              sortConfig={sortConfig}
+              isOpen={isViewMenuOpen}
+              setIsOpen={isOpen => {
+                setIsViewMenuOpen(isOpen);
+                if (isOpen) {
+                  setIsAdminMenuOpen(false);
+                  setIsSortMenuOpen(false);
+                }
+              }}
+            />
+            <AppViewMenu
+              className="max-sm:hidden"
+              isViewFull={isViewFull}
+              isMasonry={MASONRY_GRID_ENABLED && isHome}
+              hrefGrid={isHome ? pathGrid : undefined}
+              hrefFull={isHome ? pathFull : undefined}
+              onSelectView={setIsPhotoSetFull}
+              showSortControl={showSortControl}
+              sortConfig={sortConfig}
+              isSortMenuOpen={isSortMenuOpen}
+              setIsSortMenuOpen={isOpen => {
+                setIsSortMenuOpen(isOpen);
+                if (isOpen) {
+                  setIsAdminMenuOpen(false);
+                  setIsViewMenuOpen(false);
+                }
+              }}
+            />
+          </div>
+        </div>}
     </div>
   );
 }

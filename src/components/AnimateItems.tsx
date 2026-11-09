@@ -1,11 +1,8 @@
 'use client';
 
-import { ReactNode, useRef } from 'react';
-import { Variant, motion, stagger } from 'framer-motion';
+import { ReactNode, useLayoutEffect, useRef } from 'react';
 import { useAppState } from '@/app/AppState';
 import usePrefersReducedMotion from '@/utility/usePrefersReducedMotion';
-
-const IGNORE_CAN_START = true;
 
 export type AnimationType = 'none' | 'scale' | 'left' | 'right' | 'bottom';
 
@@ -34,7 +31,7 @@ function AnimateItems({
   classNameItem,
   items,
   itemKeys,
-  canStart = true,
+  canStart: _canStart,
   type = 'scale',
   duration = 0.6,
   staggerDelay = 0.1,
@@ -72,7 +69,7 @@ function AnimateItems({
     ? (nextPhotoAnimationInitial.current?.duration ?? duration)
     : duration;
 
-  const hidden: Variant =
+  const hidden: Keyframe =
     (() => {
       switch (typeResolved) {
         case 'left': return {
@@ -93,48 +90,55 @@ function AnimateItems({
         };
       }})();
 
+  const ref = useRef<HTMLDivElement>(null);
+  const seen = useRef(new WeakSet<Element>());
+  const hasMounted = useRef(false);
+  // Whether to animate is settled when the items first appear; items added
+  // later, such as the next page of photos, follow without a stagger.
+  const shouldAnimateItems = useRef(shouldAnimate);
+
+  useLayoutEffect(() => {
+    const isMount = !hasMounted.current;
+    hasMounted.current = true;
+    const added = [...ref.current?.children ?? []]
+      .filter(element => !seen.current.has(element));
+    added.forEach(element => seen.current.add(element));
+    if (isMount) {
+      nextPhotoAnimationId.current = getNextPhotoAnimationId?.();
+    }
+    const animations = shouldAnimateItems.current
+      ? added.map((element, index) => element.animate([hidden, {
+        opacity: 1,
+        transform: 'none',
+      }], {
+        duration: durationResolved * 1000,
+        delay: isMount && shouldStagger ? index * staggerDelay * 1000 : 0,
+        easing: 'ease-out',
+        fill: 'backwards',
+      }))
+      : [];
+    if (isMount) {
+      Promise.all(animations.map(animation => animation.finished))
+        .then(() => {
+          if (animateFromAppState) {
+            clearNextPhotoAnimation?.(nextPhotoAnimationId.current);
+          }
+          onAnimationComplete?.();
+        })
+        .catch(() => {});
+    }
+  });
+
   return (
-    <motion.div
-      className={className}
-      initial={shouldAnimate ? 'hidden' : false}
-      animate={canStart || IGNORE_CAN_START ? 'show' : 'hidden'}
-      variants={shouldStagger
-        ? {
-          show: {
-            transition: {
-              delayChildren: stagger(staggerDelay),
-            },
-          },
-        } : undefined}
-      onAnimationStart={() => {
-        nextPhotoAnimationId.current = getNextPhotoAnimationId?.();
-      }}
-      onAnimationComplete={() => {
-        if (animateFromAppState) {
-          clearNextPhotoAnimation?.(nextPhotoAnimationId.current);
-        }
-        onAnimationComplete?.();
-      }}
-    >
+    <div ref={ref} className={className}>
       {items.map((item, index) =>
-        <motion.div
+        <div
           key={itemKeys ? itemKeys[index] : index}
           className={classNameItem}
-          variants={{
-            hidden,
-            show: {
-              opacity: 1,
-              transform: 'translateX(0) translateY(0) scale(1)',
-            },
-          }}
-          transition={{
-            duration: durationResolved,
-            ease: 'easeOut',
-          }}
         >
           {item}
-        </motion.div>)}
-    </motion.div>
+        </div>)}
+    </div>
   );
 };
 
