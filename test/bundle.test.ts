@@ -4,8 +4,9 @@ import { test } from 'node:test';
 import { gzipSync } from 'node:zlib';
 
 // Server code that upstream keeps out of the browser lands in this bundle when ported, so a
-// budget catches it before members download it on every visit.
-const INITIAL_GZIP_BUDGET = 260_000;
+// budget catches it before members download it on every visit. It includes the route chunks
+// that index.html preloads.
+const INITIAL_GZIP_BUDGET = 345_000;
 
 test('keeps the files loaded on every page within budget', () => {
   const html = readFileSync('dist/index.html', 'utf8');
