@@ -87,7 +87,6 @@ export const getSignificantInsights = ({
 }) => {
   const {
     isAiContentGenerationEnabled,
-    hasLocationServices,
     hasRedisStorage,
     hasDomain,
   } = APP_CONFIGURATION;
@@ -95,10 +94,7 @@ export const getSignificantInsights = ({
   return {
     deprecatedEnvVars: HAS_DEPRECATED_ENV_VARS,
     forkBehind: Boolean(codeMeta?.isBehind),
-    noRateLimiting: (
-      isAiContentGenerationEnabled ||
-      hasLocationServices
-    ) && !hasRedisStorage,
+    noRateLimiting: isAiContentGenerationEnabled && !hasRedisStorage,
     noConfiguredDomain: !hasDomain,
     photosNeedSync: Boolean(photosCountNeedSync),
   };
