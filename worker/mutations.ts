@@ -124,15 +124,16 @@ export const mutations: Record<string, Handler> = {
   },
 
   async updatePhoto(env, session, photo: Input) {
-    const [id] = await owned(env, session, [String(photo?.id)]);
-    if (!id) throw invalid('Unknown photo');
-    const url = text(photo.url);
-    const [{ url: currentUrl }] = await all<{ url: string }>(
+    const [current] = await all<{ id: string; owner_sub: string; url: string }>(
       env,
-      'SELECT url FROM photos WHERE id = ?',
-      [id],
+      'SELECT id, owner_sub, url FROM photos WHERE id = ?',
+      [String(photo?.id)],
     );
-    if (url !== currentUrl && !(await ownsFile(env, session, url))) throw forbidden();
+    if (!current) throw invalid('Unknown photo');
+    if (!session.admin && current.owner_sub !== session.sub) throw forbidden();
+    const { id } = current;
+    const url = text(photo.url);
+    if (url !== current.url && !(await ownsFile(env, session, url))) throw forbidden();
     const row = { url, ...columns(photo) };
     await env.DB.prepare(
       `UPDATE photos SET ${Object.keys(row)
