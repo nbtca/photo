@@ -62,7 +62,6 @@ import { streamOpenAiImageQuery } from '@/platforms/openai';
 import {
   AI_TEXT_AUTO_GENERATED_FIELDS,
   AI_CONTENT_GENERATION_ENABLED,
-  AUTO_GENERATE_LOCATIONS,
 } from '@/app/config';
 import { generateAiImageQueries } from './ai/server';
 import { createStreamableValue } from '@ai-sdk/rsc';
@@ -166,7 +165,6 @@ const addUpload = async ({
   } = await extractImageDataFromBlobPath(url, {
     includeInitialPhotoFields: true,
     generateResizedImage: AI_CONTENT_GENERATION_ENABLED,
-    lookupLocation: AUTO_GENERATE_LOCATIONS,
   });
 
   if (formDataFromExif) {

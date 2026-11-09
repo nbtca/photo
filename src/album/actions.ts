@@ -32,7 +32,6 @@ export const createAlbumAction = async (formData: FormData) =>
       slug: album.slug,
       subhead: album.subhead,
       description: album.description,
-      location: album.location,
     });
     revalidateAllKeysAndPaths();
   });

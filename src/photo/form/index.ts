@@ -33,8 +33,6 @@ type VirtualFields =
   'favorite' |
   'applyRecipeTitleGlobally' |
   'shouldStripGpsData' |
-  'locationPlace' |
-  'locationDisplayName' |
   'keyColor';
 
 export type FormFields = keyof PhotoDbInsert | VirtualFields;
@@ -119,7 +117,6 @@ const FORM_METADATA = (
   lensModelOptions?: AnnotatedTag[],
   hasAiContentGeneration?: boolean,
   shouldStripGpsData?: boolean,
-  hasLocationServices?: boolean,
 ): Record<keyof PhotoFormData, FormMeta> => ({
   title: {
     section: 'text',
@@ -267,35 +264,6 @@ const FORM_METADATA = (
   exposureCompensation: { section: 'exif', label: 'exposure compensation' },
   latitude: { section: 'exif', label: 'latitude' },
   longitude: { section: 'exif', label: 'longitude' },
-  locationPlace: {
-    section: 'exif',
-    label: 'location',
-    excludeFromInsert: true,
-    hideModificationStatus: true,
-    shouldHide: () => !hasLocationServices,
-  },
-  locationDisplayName: {
-    section: 'exif',
-    label: 'location display name',
-    excludeFromInsert: true,
-    shouldHide: () => !hasLocationServices,
-  },
-  location: {
-    section: 'exif',
-    label: 'location data',
-    type: hasLocationServices
-      ? 'textarea'
-      : 'hidden',
-    isJson: true,
-    readOnly: true,
-    spellCheck: false,
-    capitalize: false,
-  },
-  locationName: {
-    section: 'exif',
-    label: 'location name',
-    shouldHide: () => true,
-  },
   takenAt: {
     section: 'exif',
     label: 'taken at',
@@ -487,8 +455,6 @@ export const convertPhotoToFormData = (photo: Photo): PhotoFormData => {
         return JSON.stringify(value);
       case 'colorData':
         return JSON.stringify(value);
-      case 'location':
-        return value ? JSON.stringify(value) : undefined;
       default:
         return value !== undefined && value !== null
           ? value.toString()
@@ -500,8 +466,6 @@ export const convertPhotoToFormData = (photo: Photo): PhotoFormData => {
     [key]: valueForKey(key as keyof Photo, value),
   }), {
     favorite: photo.tags.includes(TAG_FAVS) ? 'true' : 'false',
-    locationDisplayName:
-      photo.location?.nameFormatted ?? photo.location?.name ?? '',
     keyColor: convertOklchToJsonString(photo.colorData?.ai),
   } as PhotoFormData);
 };
@@ -520,7 +484,6 @@ export const convertFormDataToPhotoDbInsert = (
   if (photoForm.favorite === 'true') {
     tags.push(TAG_FAVS);
   }
-  const locationDisplayName = photoForm.locationDisplayName;
   const keyColor = photoForm.keyColor;
   const hasKeyColorField = typeof keyColor === 'string' && keyColor.length > 0;
 
@@ -587,12 +550,6 @@ export const convertFormDataToPhotoDbInsert = (
     longitude: photoForm.longitude
       ? parseFloat(photoForm.longitude)
       : undefined,
-    ...photoForm.location && {
-      location: {
-        ...JSON.parse(photoForm.location),
-        ...locationDisplayName && { nameFormatted: locationDisplayName },
-      },
-    },
     iso: photoForm.iso
       ? parseInt(photoForm.iso)
       : undefined,

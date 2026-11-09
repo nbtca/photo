@@ -4,16 +4,13 @@ import SubmitButtonWithStatus from '@/components/SubmitButtonWithStatus';
 import Link from 'next/link';
 import { PATH_ADMIN_ALBUMS } from '@/app/path';
 import FieldsetWithStatus from '@/components/FieldsetWithStatus';
-import { ReactNode, useCallback, useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { useAppState } from '@/app/AppState';
 import { Album } from '@/album';
 import { ALBUM_FORM_META } from '@/album/form';
 import { parameterize } from '@/utility/string';
 import { createAlbumAction, updateAlbumAction } from '@/album/actions';
 import clsx from 'clsx/lite';
-import PlaceInput from '@/place/PlaceInput';
-import { convertPlaceToAutocomplete, Place } from '@/place';
-import deepEqual from 'fast-deep-equal/es6/react';
 import { useRouter } from 'next/navigation';
 
 export default function AdminAlbumForm({
@@ -22,14 +19,12 @@ export default function AdminAlbumForm({
     title: '',
     slug: '',
   },
-  hasLocationServices,
   children,
   mode = 'edit',
   onTitleChange,
   redirectPath,
 }: {
   album?: Album
-  hasLocationServices?: boolean
   children?: ReactNode
   mode?: 'edit' | 'create'
   onTitleChange?: (title: string) => void
@@ -42,16 +37,6 @@ export default function AdminAlbumForm({
 
   const [albumForm, setAlbumForm] = useState<Album>(album);
   const [formError, setFormError] = useState('');
-
-  const initialPlace = useMemo(() =>
-    convertPlaceToAutocomplete(album.location),
-  [album.location]);
-  const [isLoadingPlace, setIsLoadingPlace] = useState(false);
-  const setPlace = useCallback((place?: Place) =>
-    setAlbumForm(form => ({
-      ...form,
-      location: place,
-    })), []);
 
   const isFormValid = useMemo(() => {
     return ALBUM_FORM_META.every(({ key, required }) => {
@@ -98,43 +83,6 @@ export default function AdminAlbumForm({
             error={key === 'title' ? formError : undefined}
             className={clsx(key === 'description' && '[&_textarea]:h-36')}
           />))}
-      {hasLocationServices &&
-        <PlaceInput {...{
-          initialPlace,
-          setPlace,
-          setIsLoadingPlace,
-          className: 'relative z-1',
-        }} />}
-      {(albumForm.location || isLoadingPlace) &&
-        <div className="space-y-4 w-full">
-          <FieldsetWithStatus
-            label="Location Display Name"
-            // eslint-disable-next-line @stylistic/max-len
-            value={albumForm.location?.nameFormatted ?? albumForm.location?.name ?? ''}
-            onChange={value => setAlbumForm(form => ({
-              ...form,
-              ...form.location && {
-                location: { ...form.location, nameFormatted: value },
-              },
-            }))}
-            isModified={
-              // eslint-disable-next-line @stylistic/max-len
-              (albumForm.location?.nameFormatted ?? albumForm.location?.name) !==
-              (album.location?.nameFormatted ?? album.location?.name)
-            }
-            readOnly={isLoadingPlace}
-          />
-          <FieldsetWithStatus
-            id="location"
-            label="Location Data"
-            type="textarea"
-            value={JSON.stringify(albumForm.location)}
-            isModified={!deepEqual(albumForm.location, album.location)}
-            // Make field editable when location services are disabled
-            // to allow data to be manually cleared
-            readOnly={isLoadingPlace || hasLocationServices}
-          />
-        </div>}
       {children}
       <div className={clsx(
         'flex gap-3 sticky bottom-0',
