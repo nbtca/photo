@@ -1,18 +1,11 @@
-/**
- * @jest-environment node
- */
-// `@/utility/image` transitively imports the storage adapters, which pull
-// in server-only ESM that jest cannot transform
-jest.mock('../src/platforms/storage', () => ({
-  getFileNamePartsFromStorageUrl: jest.fn(),
-}));
-
+// @vitest-environment node
+import { vi } from 'vitest';
 import { fetchUrlWithByteLimit } from '@/utility/fetch';
 
 const MAX_BYTES = 1_000;
 
 const mockFetchOnce = (response: Response) =>
-  jest.spyOn(global, 'fetch').mockResolvedValueOnce(response);
+  vi.spyOn(global, 'fetch').mockResolvedValueOnce(response);
 
 const streamFromChunks = (...chunks: Uint8Array[]) => {
   let index = 0;
@@ -30,7 +23,7 @@ const streamFromChunks = (...chunks: Uint8Array[]) => {
 
 describe('fetchImageBytes', () => {
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it('rejects images larger than the limit', async () => {

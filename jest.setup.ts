@@ -1,4 +1,0 @@
-import 'cross-fetch/polyfill';
-import { TextEncoder, TextDecoder } from 'util';
-
-Object.assign(global, { TextDecoder, TextEncoder });

@@ -1,6 +1,7 @@
+import { vi } from 'vitest';
 import { Entry, Store } from '../spa/store';
 
-jest.mock('../spa/me', () => ({
+vi.mock('../spa/me', () => ({
   me: Promise.resolve({ name: 'alice' }),
 }));
 
@@ -15,7 +16,7 @@ const memoryStore = (entries = new Map<string, Entry>()): Store => ({
 });
 
 const respond = (body: unknown) =>
-  jest.fn(async () => new Response(JSON.stringify(body)));
+  vi.fn(async () => new Response(JSON.stringify(body)));
 
 const flush = () => new Promise(resolve => setTimeout(resolve, 80));
 
@@ -132,7 +133,7 @@ describe('spa data cache', () => {
   });
 
   it('sends reads made together in one request', async () => {
-    const fetchMock = jest.fn(async () => new Response(JSON.stringify([
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify([
       { status: 200, body: ['tags'] },
       { status: 403, body: { error: 'Forbidden' } },
     ])));
