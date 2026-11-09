@@ -29,7 +29,6 @@ export default function UploadPageClient({
   hasAiContentGeneration,
   imageThumbnailBase64,
   shouldStripGpsData,
-  hasLocationServices,
 }: {
   blobId?: string
   formDataFromExif: Partial<PhotoFormData>
@@ -42,7 +41,6 @@ export default function UploadPageClient({
   hasAiContentGeneration?: boolean
   imageThumbnailBase64?: string
   shouldStripGpsData?: boolean
-  hasLocationServices?: boolean
 }) {
   const {
     pending,
@@ -89,7 +87,6 @@ export default function UploadPageClient({
         uniqueLenses={uniqueLenses}
         aiContent={hasAiContentGeneration ? aiContent : undefined}
         shouldStripGpsData={shouldStripGpsData}
-        hasLocationServices={hasLocationServices}
         onTitleChange={setUpdatedTitle}
         onFormStatusChange={setIsPending}
         onFormDataChange={setShouldConfirmAiTextGeneration}

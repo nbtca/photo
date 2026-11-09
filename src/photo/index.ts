@@ -23,7 +23,6 @@ import { FujifilmRecipe } from '@/platforms/fujifilm/recipe';
 import { PhotoUpdateStatus, generatePhotoUpdateStatus } from './update';
 import { AppTextState } from '@/i18n/state';
 import { PhotoColorData } from './color/client';
-import { Place } from '@/place';
 
 // INFINITE SCROLL: FULL
 export const INFINITE_SCROLL_FULL_INITIAL =
@@ -87,8 +86,6 @@ export interface PhotoDbInsert extends PhotoExif {
   semanticDescription?: string
   tags?: string[]
   recipeTitle?: string
-  locationName?: string
-  location?: Place
   colorData?: string
   colorSort?: number
   priorityOrder?: number

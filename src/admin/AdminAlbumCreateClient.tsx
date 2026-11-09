@@ -5,11 +5,7 @@ import AdminAlbumForm from '@/admin/AdminAlbumForm';
 import { PATH_ADMIN_ALBUMS } from '@/app/path';
 import AdminChildPage from '@/components/AdminChildPage';
 
-export default function AdminAlbumCreateClient({
-  hasLocationServices,
-}: {
-  hasLocationServices?: boolean
-}) {
+export default function AdminAlbumCreateClient() {
   const [title, setTitle] = useState('');
 
   return (
@@ -20,7 +16,6 @@ export default function AdminAlbumCreateClient({
       breadcrumbEllipsis
     >
       <AdminAlbumForm
-        hasLocationServices={hasLocationServices}
         mode="create"
         onTitleChange={setTitle}
       />

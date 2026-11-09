@@ -23,8 +23,6 @@ import Link from 'next/link';
 import { PATH_ADMIN_LIBRARY_EDIT } from '@/app/path';
 import { LuCirclePlus, LuUser } from 'react-icons/lu';
 import EmptyState from '@/components/EmptyState';
-import { Place } from '@/place';
-import PlaceEntity from '@/place/PlaceEntity';
 import LibrarySection from './LibrarySection';
 import type { LibrarySetFolderRow } from '.';
 
@@ -40,7 +38,6 @@ export default function LibraryPageClient({
   recipe,
   film,
   tag,
-  place,
   album,
   lastUpdated,
   folderRows,
@@ -56,7 +53,6 @@ export default function LibraryPageClient({
   recipe?: string
   film?: string
   tag?: string
-  place?: Place
   album?: Album
   lastUpdated?: Date
   folderRows: LibrarySetFolderRow[]
@@ -131,15 +127,6 @@ export default function LibraryPageClient({
         contrast="high"
       />,
     ),
-    place && renderItem(
-      appText.library.popularPlace,
-      <PlaceEntity
-        place={place}
-        type="text-only"
-        contrast="high"
-        badged={false}
-      />,
-    ),
     album && renderItem(
       appText.library.recentAlbum,
       <PhotoAlbum
@@ -157,7 +144,6 @@ export default function LibraryPageClient({
     recipe,
     film,
     album,
-    place,
     tag,
   ]);
 

@@ -32,7 +32,6 @@ export default function PhotoEditPageClient({
   hasAiContentGeneration,
   imageThumbnailBase64,
   blurData,
-  hasLocationServices,
 }: {
   photo: Photo
   photoStorageUrls?: StorageListResponse
@@ -46,7 +45,6 @@ export default function PhotoEditPageClient({
   hasAiContentGeneration: boolean
   imageThumbnailBase64: string
   blurData: string
-  hasLocationServices?: boolean
 }) {
   const photoForm = convertPhotoToFormData(photo);
 
@@ -99,7 +97,6 @@ export default function PhotoEditPageClient({
         uniqueCameras={uniqueCameras}
         uniqueLenses={uniqueLenses}
         aiContent={hasAiContentGeneration ? aiContent : undefined}
-        hasLocationServices={hasLocationServices}
         onTitleChange={setUpdatedTitle}
         onFormStatusChange={setIsPending}
         onFormDataChange={setShouldConfirmAiTextGeneration}

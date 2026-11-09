@@ -55,8 +55,6 @@ import usePreventNavigation from '@/utility/usePreventNavigation';
 import { useAppState } from '@/app/AppState';
 import UpdateBlurDataButton from '../UpdateBlurDataButton';
 import { BLUR_ENABLED, IS_PREVIEW } from '@/app/config';
-import PlaceInput from '@/place/PlaceInput';
-import { convertPlaceToAutocomplete, Place } from '@/place';
 import ErrorNote from '@/components/ErrorNote';
 import { convertRecipesForForm, Recipes } from '@/recipe';
 import deepEqual from 'fast-deep-equal/es6/react';
@@ -122,7 +120,6 @@ export default function PhotoForm({
   uniqueLenses,
   aiContent,
   shouldStripGpsData,
-  hasLocationServices,
   onTitleChange,
   onFormDataChange,
   onFormStatusChange,
@@ -141,7 +138,6 @@ export default function PhotoForm({
   uniqueLenses?: Lenses
   aiContent?: AiContent
   shouldStripGpsData?: boolean
-  hasLocationServices?: boolean
   onTitleChange?: (updatedTitle: string) => void
   onFormDataChange?: (formData: Partial<PhotoFormData>) => void,
   onFormStatusChange?: (pending: boolean) => void
@@ -167,7 +163,6 @@ export default function PhotoForm({
   const [albumTitles, setAlbumTitles] = useState(photoAlbumTitles
     .sort((a, b) => a.localeCompare(b))
     .join(','));
-  const [isLoadingPlace, setIsLoadingPlace] = useState(false);
   const [isLoadingKeyColor, setIsLoadingKeyColor] = useState(false);
 
   const areAlbumTitlesModified = albumTitles !== photoAlbumTitles
@@ -443,13 +438,6 @@ export default function PhotoForm({
       !shouldDebugImageFallbacks
     ) {
       return true;
-    } else if (
-      hasLocationServices &&
-      (key === 'location' || key === 'locationDisplayName') &&
-      !formData.location &&
-      !isLoadingPlace
-    ) {
-      return true;
     } else {
       return (
         (hideIfEmpty && !formData[key]) ||
@@ -470,26 +458,6 @@ export default function PhotoForm({
   // Recipe data copied in from a chosen title can be replaced by subsequent
   // titles, and is never used to search for photos needing that title
   const [copiedRecipeData, setCopiedRecipeData] = useState<string>();
-
-  const initialPlace = useMemo(() => {
-    try {
-      return convertPlaceToAutocomplete(
-        initialPhotoForm.location
-          ? JSON.parse(initialPhotoForm.location) as Place
-          : undefined,
-      );
-    } catch {
-      return undefined;
-    }
-  }, [initialPhotoForm.location]);
-
-  const setPlace = useCallback((place?: Place) => {
-    setFormData(data => ({
-      ...data,
-      location: place ? JSON.stringify(place) : '',
-      locationDisplayName: place?.nameFormatted ?? place?.name ?? '',
-    }));
-  }, []);
 
   const didCopyRecipeData =
     Boolean(formData.recipeData) &&
@@ -516,7 +484,6 @@ export default function PhotoForm({
       convertLensModelsForForm(uniqueLenses),
       aiContent !== undefined,
       shouldStripGpsData,
-      hasLocationServices,
     ), [
     uniqueTags,
     appText,
@@ -528,7 +495,6 @@ export default function PhotoForm({
     detectedFilm,
     aiContent,
     shouldStripGpsData,
-    hasLocationServices,
   ]);
 
   const ref = useRef<HTMLImageElement>(null);
@@ -754,42 +720,6 @@ export default function PhotoForm({
                       footer: footerForField(key),
                     };
                     switch (key) {
-                      case 'locationPlace':
-                        return <PlaceInput
-                          key={key}
-                          initialPlace={initialPlace}
-                          setPlace={setPlace}
-                          setIsLoadingPlace={setIsLoadingPlace}
-                          className="relative z-1"
-                        />;
-                      case 'locationDisplayName':
-                        return <FieldsetWithStatus
-                          key={key}
-                          {...fieldProps}
-                          value={formData.locationDisplayName ?? ''}
-                          readOnly={isLoadingPlace}
-                          onChange={value => setFormData(data => {
-                            let location = data.location;
-                            try {
-                              const parsed = location
-                                ? JSON.parse(location) as Place
-                                : undefined;
-                              if (parsed) {
-                                location = JSON.stringify({
-                                  ...parsed,
-                                  nameFormatted: value,
-                                });
-                              }
-                            } catch {
-                              // Keep existing location JSON
-                            }
-                            return {
-                              ...data,
-                              locationDisplayName: value,
-                              location,
-                            };
-                          })}
-                        />;
                       case 'film':
                         return <FieldsetWithStatus
                           key={key}
