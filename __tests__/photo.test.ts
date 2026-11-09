@@ -22,7 +22,7 @@ describe('Should generate photo description', () => {
   });
   it('with semantic description (disabled)', () => {
     expect(descriptionForPhoto(PHOTO_SEMANTIC as Photo))
-      .toBe('01 JAN 2025 12:00PM');
+      .toBe('01 1月 2025 12:00下午');
   });
   it('with semantic description (enabled)', () => {
     expect(descriptionForPhoto(PHOTO_SEMANTIC as Photo, true))
@@ -30,7 +30,7 @@ describe('Should generate photo description', () => {
   });
   it('with date', () => {
     expect(descriptionForPhoto(PHOTO as Photo))
-      .toBe('01 JAN 2025 12:00PM');
+      .toBe('01 1月 2025 12:00下午');
   });
 });
 

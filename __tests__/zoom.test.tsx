@@ -1,23 +1,25 @@
+import { vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
 import Viewer from 'viewerjs';
 import useImageZoomControls from
   '../src/components/image/zoom/useImageZoomControls';
 
-jest.mock('../src/utility/useMetaThemeColor', () => ({
-  __esModule: true,
-  default: jest.fn(),
+vi.mock('../src/utility/useMetaThemeColor', () => ({ default: vi.fn() }));
+vi.mock('../src/app/AppState', () => ({ useAppState: () => ({}) }));
+vi.mock('viewerjs', () => ({
+  default: vi.fn(function () {
+    return {
+      show: vi.fn(),
+      hide: vi.fn(),
+      destroy: vi.fn(),
+      zoomTo: vi.fn(),
+      reset: vi.fn(),
+    };
+  }),
 }));
-jest.mock('../src/app/AppState', () => ({ useAppState: () => ({}) }));
-jest.mock('viewerjs', () => jest.fn().mockImplementation(() => ({
-  show: jest.fn(),
-  hide: jest.fn(),
-  destroy: jest.fn(),
-  zoomTo: jest.fn(),
-  reset: jest.fn(),
-})));
 
 describe('photo zoom', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => vi.clearAllMocks());
 
   it('keeps offscreen photos lazy until zoom is requested', () => {
     const container = document.createElement('div');
@@ -41,7 +43,7 @@ describe('photo zoom', () => {
     expect(Viewer).toHaveBeenCalledTimes(1);
     expect(Viewer).toHaveBeenCalledWith(photo, expect.any(Object));
 
-    const mock = jest.mocked(Viewer);
+    const mock = vi.mocked(Viewer);
     const viewer = mock.mock.results[0].value as Viewer;
     const options = mock.mock.calls[0][1]!;
     const url = options.url as (image: HTMLImageElement) => string;

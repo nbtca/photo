@@ -8,7 +8,7 @@
     "lint": "eslint .",
     "typecheck": "wrangler types && tsc -p . && tsc -p worker",
     "test": "vite build && node --test 'test/*.test.ts'",
-    "test:unit": "jest __tests__ --transformIgnorePatterns 'node_modules/(?!my-library-dir)/'"
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.23",
@@ -40,27 +40,23 @@
     "@stylistic/eslint-plugin": "^5.10.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
-    "@testing-library/jest-dom": "^7.0.1",
     "@testing-library/react": "^16.3.3",
-    "@types/jest": "^30.0.0",
     "@types/node": "^26.6.4",
     "@types/piexifjs": "^1.0.0",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "baseline-browser-mapping": "^2.11.27",
-    "cross-fetch": "^4.1.0",
     "eslint": "^9",
     "eslint-config-next": "16.3.8",
     "eslint-plugin-jsx-a11y": "6.10.2",
-    "jest": "^30.5.2",
-    "jest-environment-jsdom": "^30.5.2",
+    "jsdom": "26.1.0",
     "next": "16.3.8",
     "postcss": "8.5.28",
     "tailwindcss": "4.3.3",
-    "ts-node": "^10.9.2",
     "typescript": "^6",
     "vite": "^8.3.3",
+    "vitest": "5.0.5",
     "wrangler": "^4.148.0"
   },
   "private": true
