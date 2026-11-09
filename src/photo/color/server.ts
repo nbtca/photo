@@ -1,9 +1,7 @@
-import { convertRgbToOklab, parseHex } from 'culori';
 import {
   AI_CONTENT_GENERATION_ENABLED,
   IS_PREVIEW,
 } from '@/app/config';
-import { FastAverageColor } from 'fast-average-color';
 import {
   convertOklchToJsonString,
   generateColorDataFromString,
@@ -17,19 +15,29 @@ import { generateOpenAiImageQuery } from '@/platforms/openai';
 import { calculateColorSort } from './sort';
 import { getOptimizedPhotoUrlForManipulation } from '../storage';
 
-const NULL_RGB = { r: 0, g: 0, b: 0 };
+const linear = (channel: number) => {
+  const c = channel / 255;
+  return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+
+const round = (value: number) => +value.toFixed(3);
+
+// https://bottosson.github.io/posts/oklab/
+const convertRgbToOklch = (red: number, green: number, blue: number): Oklch => {
+  const [r, g, b] = [red, green, blue].map(linear);
+  const L = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const M = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const S = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const l = 0.2104542553 * L + 0.7936177850 * M - 0.0040720468 * S;
+  const a = 1.9779984951 * L - 2.4285922050 * M + 0.4505937099 * S;
+  const bb = 0.0259040371 * L + 0.7827717662 * M - 0.8086757660 * S;
+  const h = Math.atan2(bb, a) * (180 / Math.PI);
+  return { l: round(l), c: round(Math.hypot(a, bb)), h: round(h < 0 ? h + 360 : h) };
+};
 
 export const convertHexToOklch = (hex: string): Oklch => {
-  const rgb = parseHex(hex) ?? NULL_RGB;
-  const { a, b, l } = convertRgbToOklab(rgb);
-  const c = Math.sqrt(a * a + b * b);
-  const _h = Math.atan2(b, a) * (180 / Math.PI);
-  const h = _h < 0 ? _h + 360 : _h;
-  return {
-    l: +(l.toFixed(3)),
-    c: +(c.toFixed(3)),
-    h: +(h.toFixed(3)),
-  };
+  const value = parseInt(hex.replace(/^#/, '').slice(0, 6), 16) || 0;
+  return convertRgbToOklch(value >> 16, (value >> 8) & 255, value & 255);
 };
 
 // Convert image url to byte array
@@ -47,12 +55,19 @@ const getImageDataFromUrl = async (_url: string) => {
   };
 };
 
-// algorithm library: fast-average-color
+// Squares channels before averaging, weighted by alpha
 const getAverageColorFromImageUrl = async (url: string) => {
   const { data } = await getImageDataFromUrl(url);
-  const fac = new FastAverageColor();
-  const color = fac.prepareResult(fac.getColorFromArray4(data));
-  return convertHexToOklch(color.hex);
+  const totals = [0, 0, 0];
+  let alphaTotal = 0;
+  for (let i = 0; i + 3 < data.length; i += 4) {
+    const alpha = data[i + 3];
+    for (let c = 0; c < 3; c++) { totals[c] += data[i + c] ** 2 * alpha; }
+    alphaTotal += alpha;
+  }
+  const [r, g, b] = totals.map(total =>
+    alphaTotal ? Math.round(Math.sqrt(total / alphaTotal)) : 0);
+  return convertRgbToOklch(r, g, b);
 };
 
 // algorithm library: extract-colors
