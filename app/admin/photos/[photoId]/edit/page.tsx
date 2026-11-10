@@ -15,7 +15,6 @@ import { PATH_ADMIN } from '@/app/path';
 import PhotoEditPageClient from '@/photo/PhotoEditPageClient';
 import {
   BLUR_ENABLED,
-  IS_PREVIEW,
 } from '@/app/config';
 import { blurImageFromUrl } from '@/photo/server';
 import {
@@ -57,7 +56,7 @@ export default async function PhotoEditPage({
 
   const blurData = BLUR_ENABLED
     ? await blurImageFromUrl(
-      getOptimizedPhotoUrlForManipulation(photo.url, IS_PREVIEW),
+      getOptimizedPhotoUrlForManipulation(photo.url),
     )
     : '';
 
