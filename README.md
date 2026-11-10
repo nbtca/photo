@@ -1,6 +1,8 @@
 # photo
 
-The members-only photo album of NBTCA, served from `photo.nbtca.space`.
+[![CI](https://github.com/nbtca/photo/actions/workflows/ci.yml/badge.svg)](https://github.com/nbtca/photo/actions/workflows/ci.yml)
+
+The members-only photo album of NBTCA, served from [photo.nbtca.space](https://photo.nbtca.space).
 
 It is a fork of [exif-photo-blog](https://github.com/sambecker/exif-photo-blog) and keeps its interface. Upstream is a Next.js app that renders on a server and talks to Postgres. This fork builds the same interface as a static app and moves everything else into one Cloudflare Worker, so it runs on the Workers free plan.
 
@@ -29,14 +31,11 @@ Private photos and unfinished uploads are visible to their owner and to admins.
 
 Each member can store `USER_QUOTA_MB` of files and the whole album stops accepting uploads at `TOTAL_QUOTA_MB`, which keeps the bucket inside the R2 free tier. Admins are exempt from the per-member limit. A daily cron removes files that never became photos within `PENDING_UPLOAD_TTL` seconds.
 
-## Access setup
-
-In Zero Trust, add a self-hosted application for `photo.nbtca.space` with Logto as the identity provider and a policy that admits members. Put its Application Audience (AUD) tag in `ACCESS_AUD` and the admins' emails, comma-separated, in `ADMIN_EMAILS` in `wrangler.jsonc`. Until `ACCESS_AUD` is set the Worker rejects every request.
-
 ## Development
 
 ```sh
 pnpm install
+pnpm preview     # production build on local workerd with local D1 and R2
 pnpm test        # builds, checks the bundle budget, then runs the Worker with test-signed Access tokens
 pnpm test:unit   # unit tests with Vitest, using the site's Vite config
 pnpm typecheck
@@ -56,6 +55,13 @@ wrangler d1 create photo               # copy the ID into wrangler.jsonc
 wrangler r2 bucket create photo
 ```
 
-Every push to `main` runs lint, type checks and tests in GitHub Actions, then applies the D1 migrations and deploys the Worker. Pull requests run the checks only. The `production` environment needs a `CLOUDFLARE_API_TOKEN` secret with these permissions on the account: Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit, and on the `nbtca.space` zone Workers Routes Edit. Migrations run before the new code, so write each one to work with the previous release too.
+In Zero Trust, add a self-hosted application for `photo.nbtca.space` with Logto as the identity provider and a policy that admits members. Put its Application Audience (AUD) tag in `ACCESS_AUD` and the admins' emails, comma-separated, in `ADMIN_EMAILS` in `wrangler.jsonc`. Until `ACCESS_AUD` is set the Worker rejects every request.
+
+`pnpm run deploy` builds, applies the D1 migrations and deploys the Worker. Plain `pnpm deploy` is a different pnpm command.
+
+Every push to `main` runs lint, type checks and tests in GitHub Actions, then runs `pnpm run deploy`. Pull requests run the checks only. The `production` environment needs a `CLOUDFLARE_API_TOKEN` secret with these permissions on the account: Workers Scripts Edit, D1 Edit, Workers R2 Storage Edit, and on the `nbtca.space` zone Workers Routes Edit. Migrations run before the new code, so write each one to work with the previous release too.
 
 To roll back, run `wrangler rollback` and fix forward in a new commit.
+
+> [!IMPORTANT]
+> The account shares the [D1 free tier](https://developers.cloudflare.com/d1/platform/limits/) of 5 million rows read per day with other NBTCA services. Keep queries indexed and check the rows they read with `EXPLAIN QUERY PLAN` before merging.
