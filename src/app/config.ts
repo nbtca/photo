@@ -1,5 +1,4 @@
 import { parseOrderedCategoriesFromString } from '@/category';
-import type { StorageType } from '@/platforms/storage';
 import {
   makeUrlAbsolute,
   shortenUrl,
@@ -7,7 +6,6 @@ import {
 import { getNavSortControlFromString, getSortByFromString } from '@/photo/sort';
 import { parseChromaCutoff, parseStartingHue } from '@/photo/color/sort';
 import { parseSocialKeysFromString } from '@/social';
-import { dependencies } from '../../package.json';
 
 // HARD-CODED GLOBAL CONFIGURATION
 
@@ -15,86 +13,27 @@ export const SHOULD_PREFETCH_ALL_LINKS: boolean | undefined = undefined;
 
 // TEMPLATE META
 
-export const TEMPLATE_TITLE = 'Photo Blog';
-export const TEMPLATE_DESCRIPTION = 'Store photos with original camera data';
+const TEMPLATE_TITLE = 'Photo Blog';
 
 // SOURCE CODE
 
-export const TEMPLATE_REPO_OWNER  = 'sambecker';
-export const TEMPLATE_REPO_NAME   = 'exif-photo-blog';
-export const TEMPLATE_REPO_BRANCH = 'main';
+export const TEMPLATE_REPO_NAME = 'exif-photo-blog';
 export const TEMPLATE_REPO_URL =
-  `https://github.com/${TEMPLATE_REPO_OWNER}/${TEMPLATE_REPO_NAME}`;
-export const TEMPLATE_REPO_URL_FORK = `${TEMPLATE_REPO_URL}/fork`;
-export const TEMPLATE_REPO_URL_README =
-  `${TEMPLATE_REPO_URL}?tab=readme-ov-file`;
+  `https://github.com/sambecker/${TEMPLATE_REPO_NAME}`;
 
-export const VERCEL_GIT_PROVIDER =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_PROVIDER;
-export const VERCEL_GIT_REPO_OWNER =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_REPO_OWNER;
-export const VERCEL_GIT_REPO_SLUG =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_REPO_SLUG;
-export const VERCEL_GIT_BRANCH = process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_REF;
-export const VERCEL_GIT_COMMIT_MESSAGE =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_MESSAGE;
-export const VERCEL_GIT_COMMIT_SHA =
-  process.env.NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA;
-export const VERCEL_GIT_COMMIT_SHA_SHORT = VERCEL_GIT_COMMIT_SHA
-  ? VERCEL_GIT_COMMIT_SHA.slice(0, 7)
-  : undefined;
-export const IS_VERCEL_GIT_PROVIDER_GITHUB = VERCEL_GIT_PROVIDER === 'github';
-export const VERCEL_GIT_COMMIT_URL = IS_VERCEL_GIT_PROVIDER_GITHUB
-  // eslint-disable-next-line @stylistic/max-len
-  ? `https://github.com/${VERCEL_GIT_REPO_OWNER}/${VERCEL_GIT_REPO_SLUG}/commit/${VERCEL_GIT_COMMIT_SHA}`
-  : undefined;
-
-export const VERCEL_ENV = process.env.NEXT_PUBLIC_VERCEL_ENV;
-export const VERCEL_PRODUCTION_URL = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-export const VERCEL_DEPLOYMENT_URL = process.env.NEXT_PUBLIC_VERCEL_URL;
-export const VERCEL_BRANCH_URL = process.env.NEXT_PUBLIC_VERCEL_BRANCH_URL;
-// Last resort: cannot be used reliably
-export const VERCEL_PROJECT_URL = VERCEL_BRANCH_URL && VERCEL_GIT_BRANCH
-  ? `${VERCEL_BRANCH_URL.split(`-git-${VERCEL_GIT_BRANCH}-`)[0]}.vercel.app`
-  : undefined;
-
-export const IS_PRODUCTION = process.env.NODE_ENV === 'production' && (
-  // Make environment checks resilient to non-Vercel deployments
-  VERCEL_ENV === 'production' ||
-  !VERCEL_ENV
-);
-export const IS_DEVELOPMENT = process.env.NODE_ENV === 'development';
-export const IS_PREVIEW = VERCEL_ENV === 'preview';
 export const IS_BUILDING = process.env.NEXT_PHASE === 'phase-production-build';
-// VERCEL_ENV is only ever set by Vercel's platform (or `vercel env pull`),
-// so its presence is a reliable "are we actually running on Vercel" signal.
-export const IS_VERCEL_DEPLOYMENT = Boolean(VERCEL_ENV);
-
-export const VERCEL_BYPASS_KEY = 'x-vercel-protection-bypass';
-export const VERCEL_BYPASS_SECRET = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-
 // DOMAIN
 
 // User-facing domain, potential site title
-const SITE_DOMAIN =
-  process.env.NEXT_PUBLIC_DOMAIN ||
-  // Legacy environment variable
-  process.env.NEXT_PUBLIC_SITE_DOMAIN ||
-  VERCEL_PRODUCTION_URL ||
-  VERCEL_PROJECT_URL ||
-  VERCEL_DEPLOYMENT_URL;
+const SITE_DOMAIN = process.env.NEXT_PUBLIC_DOMAIN;
 const SITE_DOMAIN_SHARE = process.env.NEXT_PUBLIC_DOMAIN_SHARE;
 
 // Used primarily for absolute references such as OG images
-export const BASE_URL =
-  makeUrlAbsolute((
-    process.env.NODE_ENV === 'production' &&
-    VERCEL_ENV !== 'preview'
-  ) ? SITE_DOMAIN
-    : VERCEL_ENV === 'preview'
-      ? VERCEL_BRANCH_URL || VERCEL_DEPLOYMENT_URL
-      : 'http://localhost:3000')?.toLocaleLowerCase();
-export const BASE_URL_SHARE =
+const BASE_URL =
+  makeUrlAbsolute(process.env.NODE_ENV === 'production'
+    ? SITE_DOMAIN
+    : 'http://localhost:3000')?.toLocaleLowerCase();
+const BASE_URL_SHARE =
   makeUrlAbsolute(SITE_DOMAIN_SHARE)?.toLocaleLowerCase();
 
 export const getBaseUrl = (share?: boolean) =>
@@ -108,9 +47,8 @@ export const APP_LOCALE = (process.env.NEXT_PUBLIC_LOCALE || 'en-us')
   // Accepts both `en-us` and `EN_US`
   .toLocaleLowerCase()
   .replace('_', '-');
-export const HTML_LANG = (APP_LOCALE.split('-')[0] || 'en');
 
-export const CUSTOM_NAV_TITLE =
+const CUSTOM_NAV_TITLE =
   process.env.NEXT_PUBLIC_NAV_TITLE;
 
 export const NAV_CAPTION =
@@ -125,20 +63,6 @@ export const META_TITLE =
   CUSTOM_NAV_TITLE ||
   TEMPLATE_TITLE;
 
-export const IS_META_TITLE_CONFIGURED =
-  Boolean(process.env.NEXT_PUBLIC_META_TITLE) ||
-  // Legacy environment variable
-  Boolean(process.env.NEXT_PUBLIC_SITE_TITLE) ||
-  Boolean(CUSTOM_NAV_TITLE);
-
-export const IS_META_DESCRIPTION_CONFIGURED =
-  Boolean(process.env.NEXT_PUBLIC_META_DESCRIPTION) ||
-  Boolean(NAV_CAPTION);
-
-export const META_DESCRIPTION =
-  process.env.NEXT_PUBLIC_META_DESCRIPTION ||
-  NAV_CAPTION ||
-  SITE_DOMAIN_SHORT;
 
 export const NAV_TITLE =
   CUSTOM_NAV_TITLE ||
@@ -155,69 +79,6 @@ export const LIBRARY_DESCRIPTION_DEFAULT =
   process.env.NEXT_PUBLIC_META_DESCRIPTION ||
   process.env.NEXT_PUBLIC_SIDEBAR_TEXT;
 
-// STORAGE
-
-// STORAGE: DATABASE
-export const HAS_DATABASE =
-  Boolean(process.env.POSTGRES_URL);
-export const POSTGRES_SSL_ENABLED =
-  process.env.DISABLE_POSTGRES_SSL === '1' ? false : true;
-
-// STORAGE: VERCEL BLOB
-export const HAS_VERCEL_BLOB_STORAGE =
-  Boolean(process.env.BLOB_READ_WRITE_TOKEN);
-
-// STORAGE: Cloudflare R2
-// Includes separate check for client-side usage, i.e., url construction
-export const HAS_CLOUDFLARE_R2_STORAGE_CLIENT =
-  Boolean(process.env.NEXT_PUBLIC_CLOUDFLARE_R2_BUCKET) &&
-  Boolean(process.env.NEXT_PUBLIC_CLOUDFLARE_R2_ACCOUNT_ID) &&
-  Boolean(process.env.NEXT_PUBLIC_CLOUDFLARE_R2_PUBLIC_DOMAIN);
-export const HAS_CLOUDFLARE_R2_STORAGE =
-  HAS_CLOUDFLARE_R2_STORAGE_CLIENT &&
-  Boolean(process.env.CLOUDFLARE_R2_ACCESS_KEY) &&
-  Boolean(process.env.CLOUDFLARE_R2_SECRET_ACCESS_KEY);
-
-// STORAGE: AWS S3
-// Includes separate check for client-side usage, i.e., url construction
-export const HAS_AWS_S3_STORAGE_CLIENT =
-  Boolean(process.env.NEXT_PUBLIC_AWS_S3_BUCKET) &&
-  Boolean(process.env.NEXT_PUBLIC_AWS_S3_REGION);
-export const HAS_AWS_S3_STORAGE =
-  HAS_AWS_S3_STORAGE_CLIENT &&
-  Boolean(process.env.AWS_S3_ACCESS_KEY) &&
-  Boolean(process.env.AWS_S3_SECRET_ACCESS_KEY);
-
-// STORAGE: MINIO
-// Includes separate check for client-side usage, i.e., url construction
-export const HAS_MINIO_STORAGE_CLIENT =
-  Boolean(process.env.NEXT_PUBLIC_MINIO_BUCKET) &&
-  Boolean(process.env.NEXT_PUBLIC_MINIO_DOMAIN);
-export const HAS_MINIO_STORAGE =
-  HAS_MINIO_STORAGE_CLIENT &&
-  Boolean(process.env.MINIO_ACCESS_KEY) &&
-  Boolean(process.env.MINIO_SECRET_ACCESS_KEY);
-
-export const HAS_MULTIPLE_STORAGE_PROVIDERS = [
-  HAS_VERCEL_BLOB_STORAGE,
-  HAS_CLOUDFLARE_R2_STORAGE,
-  HAS_AWS_S3_STORAGE,
-  HAS_MINIO_STORAGE,
-].filter(Boolean).length > 1;
-
-// Storage preference requires client-available keys
-// so it can be reached in the browser when uploading
-export const CURRENT_STORAGE: StorageType =
-  (process.env.NEXT_PUBLIC_STORAGE_PREFERENCE as StorageType | undefined) || (
-    HAS_MINIO_STORAGE_CLIENT
-      ? 'minio'
-      : HAS_CLOUDFLARE_R2_STORAGE_CLIENT
-        ? 'cloudflare-r2'
-        : HAS_AWS_S3_STORAGE_CLIENT
-          ? 'aws-s3'
-          : 'vercel-blob'
-  );
-
 // PERFORMANCE
 
 export const STATICALLY_OPTIMIZED_PHOTOS =
@@ -232,12 +93,6 @@ export const STATICALLY_OPTIMIZED_PHOTO_CATEGORIES =
   process.env.NEXT_PUBLIC_STATICALLY_OPTIMIZE_PHOTO_CATEGORIES === '1';
 export const STATICALLY_OPTIMIZED_PHOTO_CATEGORY_OG_IMAGES =
   process.env.NEXT_PUBLIC_STATICALLY_OPTIMIZE_PHOTO_CATEGORY_OG_IMAGES === '1';
-export const HAS_STATIC_OPTIMIZATION =
-  STATICALLY_OPTIMIZED_PHOTOS ||
-  STATICALLY_OPTIMIZED_PHOTO_OG_IMAGES ||
-  STATICALLY_OPTIMIZED_PHOTO_CATEGORIES ||
-  STATICALLY_OPTIMIZED_PHOTO_CATEGORY_OG_IMAGES;
-
 export const PRESERVE_ORIGINAL_UPLOADS =
   process.env.NEXT_PUBLIC_PRESERVE_ORIGINAL_UPLOADS === '1' ||
   // Legacy environment variable
@@ -334,7 +189,7 @@ export const GRID_ASPECT_RATIO =
   process.env.NEXT_PUBLIC_GRID_ASPECT_RATIO
     ? parseFloat(process.env.NEXT_PUBLIC_GRID_ASPECT_RATIO)
     : 1;
-export const PREFERS_LOW_DENSITY_GRID =
+const PREFERS_LOW_DENSITY_GRID =
   process.env.NEXT_PUBLIC_SHOW_LARGE_THUMBNAILS === '1';
 export const HIGH_DENSITY_GRID =
   GRID_ASPECT_RATIO <= 1 &&
@@ -366,8 +221,6 @@ export const TINT_FOLDERS =
   process.env.NEXT_PUBLIC_TINT_FOLDERS === '1';
 export const HIGH_DENSITY_PREVIEWS =
   process.env.NEXT_PUBLIC_HIGH_DENSITY_PREVIEWS === '1';
-export const OG_TEXT_BOTTOM_ALIGNMENT =
-  (process.env.NEXT_PUBLIC_OG_TEXT_ALIGNMENT ?? '').toUpperCase() === 'BOTTOM';
 
 // SETTINGS
 
@@ -379,213 +232,9 @@ export const SOCIAL_NETWORKS = parseSocialKeysFromString(
     ? 'none'
     : process.env.NEXT_PUBLIC_SOCIAL_NETWORKS,
 );
-export const SITE_FEEDS_ENABLED =
-  process.env.NEXT_PUBLIC_SITE_FEEDS === '1';
-
-// SCRIPTS & ANALYTICS
-
-export const PAGE_SCRIPT_URLS = process.env.PAGE_SCRIPT_URLS
-  ? process.env.PAGE_SCRIPT_URLS
-    .split(',')
-    .map(url => url.trim().toLocaleLowerCase())
-    .filter(url => url.startsWith('https://'))
-  : [];
-
-// DEBUGGING
-
-export const DEBUG_OUTPUTS_ENABLED = process.env.DISABLE_DEBUG_OUTPUTS !== '1';
-
 // INTERNAL
 
 export const ADMIN_DEBUG_TOOLS_ENABLED =
   process.env.ADMIN_DEBUG_TOOLS === '1';
-export const ADMIN_SQL_DEBUG_ENABLED =
-  process.env.ADMIN_SQL_DEBUG === '1' &&
-  !IS_BUILDING;
 export const ADMIN_STORAGE_DEBUG_ENABLED =
   process.env.ADMIN_STORAGE_DEBUG === '1';
-
-// ⚠️ Add `APP_CONFIGURATION` keys with caution
-// Under certain debugging conditions, this object
-// is exposed to the client 
-export const APP_CONFIGURATION = {
-  // Storage
-  hasDatabase: HAS_DATABASE,
-  isPostgresSslEnabled: POSTGRES_SSL_ENABLED,
-  hasVercelBlobStorage: HAS_VERCEL_BLOB_STORAGE,
-  hasCloudflareR2Storage: HAS_CLOUDFLARE_R2_STORAGE,
-  hasAwsS3Storage: HAS_AWS_S3_STORAGE,
-  hasMinioStorage: HAS_MINIO_STORAGE,
-  hasStorageProvider: (
-    HAS_VERCEL_BLOB_STORAGE ||
-    HAS_CLOUDFLARE_R2_STORAGE ||
-    HAS_AWS_S3_STORAGE ||
-    HAS_MINIO_STORAGE
-  ),
-  hasMultipleStorageProviders: HAS_MULTIPLE_STORAGE_PROVIDERS,
-  currentStorage: CURRENT_STORAGE,
-  // Auth
-  hasAuthSecret: Boolean(process.env.AUTH_SECRET),
-  hasAdminUser: (
-    Boolean(process.env.ADMIN_EMAIL) &&
-    Boolean(process.env.ADMIN_PASSWORD)
-  ),
-  // Content
-  locale: APP_LOCALE,
-  hasLocale: Boolean(process.env.NEXT_PUBLIC_LOCALE),
-  domain: SITE_DOMAIN_SHORT,
-  hasDomain: Boolean(
-    process.env.NEXT_PUBLIC_DOMAIN ||
-    // Legacy environment variable
-    process.env.NEXT_PUBLIC_SITE_DOMAIN,
-  ),
-  metaTitle: META_TITLE,
-  isMetaTitleConfigured: IS_META_TITLE_CONFIGURED,
-  metaDescription: META_DESCRIPTION,
-  isMetaDescriptionConfigured: IS_META_DESCRIPTION_CONFIGURED,
-  navTitle: NAV_TITLE,
-  hasNavTitle: Boolean(CUSTOM_NAV_TITLE),
-  navCaption: NAV_CAPTION,
-  hasNavCaption: Boolean(NAV_CAPTION),
-  sidebarText: SIDEBAR_TEXT,
-  hasSidebarText: Boolean(SIDEBAR_TEXT),
-  // Performance
-  isStaticallyOptimized: HAS_STATIC_OPTIMIZATION,
-  arePhotosStaticallyOptimized: STATICALLY_OPTIMIZED_PHOTOS,
-  arePhotoOGImagesStaticallyOptimized: STATICALLY_OPTIMIZED_PHOTO_OG_IMAGES,
-  arePhotoCategoriesStaticallyOptimized: STATICALLY_OPTIMIZED_PHOTO_CATEGORIES,
-  arePhotoCategoryOgImagesStaticallyOptimized:
-    STATICALLY_OPTIMIZED_PHOTO_CATEGORY_OG_IMAGES,
-  areOriginalUploadsPreserved: PRESERVE_ORIGINAL_UPLOADS,
-  hasImageQuality: Boolean(process.env.NEXT_PUBLIC_IMAGE_QUALITY),
-  imageQuality: IMAGE_QUALITY,
-  isBlurEnabled: BLUR_ENABLED,
-  // Location
-  isGeoPrivacyEnabled: GEO_PRIVACY_ENABLED,
-  // Categories
-  hasCategoryVisibility:
-    Boolean(process.env.NEXT_PUBLIC_CATEGORY_VISIBILITY),
-  categoryVisibility: CATEGORY_VISIBILITY,
-  showCategoriesOnMobile: SHOW_CATEGORIES_ON_MOBILE,
-  showCategoryImageHover: SHOW_CATEGORY_IMAGE_HOVERS,
-  collapseSidebarCategories: COLLAPSE_SIDEBAR_CATEGORIES,
-  hideTagsWithOnePhoto: HIDE_TAGS_WITH_ONE_PHOTO,
-  // Sort
-  hasDefaultSortBy: Boolean(process.env.NEXT_PUBLIC_DEFAULT_SORT),
-  defaultSortBy: USER_DEFAULT_SORT_BY,
-  hasNavSortControl: Boolean(process.env.NEXT_PUBLIC_NAV_SORT_CONTROL),
-  navSortControl: NAV_SORT_CONTROL,
-  isColorSortEnabled: COLOR_SORT_ENABLED,
-  hasColorSortConfiguration:
-    Boolean(process.env.NEXT_PUBLIC_COLOR_SORT_STARTING_HUE) ||
-    Boolean(process.env.NEXT_PUBLIC_COLOR_SORT_CHROMA_CUTOFF),
-  colorSortStartingHue: COLOR_SORT_STARTING_HUE,
-  colorSortChromaCutoff: COLOR_SORT_CHROMA_CUTOFF,
-  isSortWithPriority: USER_DEFAULT_SORT_WITH_PRIORITY,
-  // Display
-  showKeyboardShortcutTooltips: SHOW_KEYBOARD_SHORTCUT_TOOLTIPS,
-  showExifInfo: SHOW_EXIF_DATA,
-  alwaysShowExposureComp: ALWAYS_SHOW_EXPOSURE_COMP,
-  showZoomControls: SHOW_ZOOM_CONTROLS,
-  showTakenAtTimeHidden: SHOW_TAKEN_AT_TIME,
-  showRepoLink: SHOW_TEMPLATE_ATTRIBUTION,
-  // Grid
-  isGridHomepageEnabled: GRID_HOMEPAGE_ENABLED,
-  isMasonryGridEnabled: MASONRY_GRID_ENABLED,
-  gridAspectRatio: GRID_ASPECT_RATIO,
-  hasGridAspectRatio: Boolean(process.env.NEXT_PUBLIC_GRID_ASPECT_RATIO),
-  hasHighGridDensity: HIGH_DENSITY_GRID,
-  hasGridDensityPreference:
-    Boolean(process.env.NEXT_PUBLIC_SHOW_LARGE_THUMBNAILS),
-  // Design
-  isExpressiveLayoutEnabled: EXPRESSIVE_LAYOUT_ENABLED,
-  hasDefaultTheme: Boolean(process.env.NEXT_PUBLIC_DEFAULT_THEME),
-  defaultTheme: DEFAULT_THEME,
-  arePhotosMatted: MATTE_PHOTOS,
-  arePhotoMatteColorsConfigured:
-    Boolean(MATTE_COLOR) ||
-    Boolean(MATTE_COLOR_DARK),
-  matteColor: MATTE_COLOR,
-  matteColorDark: MATTE_COLOR_DARK,
-  arePhotoTitlesUppercase: UPPERCASE_TITLES,
-  arePhotoTitlesSerif: PHOTO_TITLE_SERIF,
-  arePhotoColorBarsShown: PHOTO_COLOR_BAR,
-  areFoldersTinted: TINT_FOLDERS,
-  hasHighDensityPreviews: HIGH_DENSITY_PREVIEWS,
-  isOgTextBottomAligned: OG_TEXT_BOTTOM_ALIGNMENT,
-  // Settings
-  arePublicDownloadsEnabled: ALLOW_PUBLIC_DOWNLOADS,
-  hasSocialKeys: Boolean(process.env.NEXT_PUBLIC_SOCIAL_NETWORKS),
-  socialKeys: SOCIAL_NETWORKS,
-  areSiteFeedsEnabled: SITE_FEEDS_ENABLED,
-  // Scripts & Analytics
-  hasPageScriptUrls: PAGE_SCRIPT_URLS.length > 0,
-  pageScriptUrls: PAGE_SCRIPT_URLS,
-  // Debugging
-  isDebuggingEnabled: DEBUG_OUTPUTS_ENABLED,
-  // Internal
-  areInternalToolsEnabled: (
-    ADMIN_DEBUG_TOOLS_ENABLED ||
-    ADMIN_SQL_DEBUG_ENABLED
-  ),
-  areAdminDebugToolsEnabled: ADMIN_DEBUG_TOOLS_ENABLED,
-  isAdminSqlDebugEnabled: ADMIN_SQL_DEBUG_ENABLED,
-  isAdminStorageDebugEnabled: ADMIN_STORAGE_DEBUG_ENABLED,
-  // Misc
-  reactVersion: dependencies.react,
-  nodeVersion: (process.version || '').match(/[0-9.]+$/)?.[0],
-  baseUrl: BASE_URL,
-  baseUrlShare: BASE_URL_SHARE,
-  commitSha: VERCEL_GIT_COMMIT_SHA_SHORT,
-  commitMessage: VERCEL_GIT_COMMIT_MESSAGE,
-  commitUrl: VERCEL_GIT_COMMIT_URL,
-};
-
-const ALL_DEPRECATED_ENV_VARS = [{
-  old: 'NEXT_PUBLIC_SITE_DOMAIN',
-  replacement: 'NEXT_PUBLIC_DOMAIN',
-}, {
-  old: 'NEXT_PUBLIC_SITE_DESCRIPTION',
-  replacement: 'NEXT_PUBLIC_NAV_CAPTION',
-}, {
-  old: 'NEXT_PUBLIC_SITE_TITLE',
-  replacement: 'NEXT_PUBLIC_META_TITLE',
-}, {
-  old: 'NEXT_PUBLIC_SITE_ABOUT',
-  replacement: 'NEXT_PUBLIC_SIDEBAR_TEXT',
-}, {
-  old: 'NEXT_PUBLIC_PAGE_ABOUT',
-  replacement: 'NEXT_PUBLIC_SIDEBAR_TEXT',
-}, {
-  old: 'NEXT_PUBLIC_STATICALLY_OPTIMIZE_PAGES',
-  replacement: 'NEXT_PUBLIC_STATICALLY_OPTIMIZE_PHOTOS',
-}, {
-  old: 'NEXT_PUBLIC_STATICALLY_OPTIMIZE_OG_IMAGES',
-  replacement: 'NEXT_PUBLIC_STATICALLY_OPTIMIZE_PHOTO_OG_IMAGES',
-}, {
-  old: 'NEXT_PUBLIC_PRO_MODE',
-  replacement: 'NEXT_PUBLIC_PRESERVE_ORIGINAL_UPLOADS',
-}, {
-  old: 'NEXT_PUBLIC_HIDE_SOCIAL',
-  replacement: 'NEXT_PUBLIC_SOCIAL_NETWORKS',
-}, {
-  old: 'NEXT_PUBLIC_BLUR_DISABLED',
-  replacement: 'NEXT_PUBLIC_DISABLE_BLUR',
-}, {
-  old: 'NEXT_PUBLIC_HIDE_REPO_LINK',
-  replacement: 'NEXT_PUBLIC_HIDE_TEMPLATE_ATTRIBUTION',
-}];
-
-export const USED_DEPRECATED_ENV_VARS = ALL_DEPRECATED_ENV_VARS
-  .filter(({ old }) => Boolean(process.env[old]));
-
-export const HAS_DEPRECATED_ENV_VARS =
-  USED_DEPRECATED_ENV_VARS.length > 0;
-
-export const IS_APP_READY =
-  APP_CONFIGURATION.hasDatabase &&
-  APP_CONFIGURATION.hasStorageProvider &&
-  APP_CONFIGURATION.hasAuthSecret &&
-  APP_CONFIGURATION.hasAdminUser;
-
-export type AppConfiguration = typeof APP_CONFIGURATION;

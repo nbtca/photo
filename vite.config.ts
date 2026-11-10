@@ -23,8 +23,6 @@ const ENV: Record<string, string> = {
   NEXT_PUBLIC_HIDE_SOCIAL: '1',
   // Share previews were images rendered on the server.
   NEXT_PUBLIC_HIDE_CATEGORY_IMAGE_HOVERS: '1',
-  // Feeds would need to be public.
-  NEXT_PUBLIC_SITE_FEEDS: '0',
 };
 
 const src = (file: string) => path.resolve(__dirname, 'src', file);

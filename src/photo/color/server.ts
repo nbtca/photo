@@ -1,7 +1,4 @@
 import {
-  IS_PREVIEW,
-} from '@/app/config';
-import {
   convertOklchToJsonString,
   generateColorDataFromString,
   Oklch,
@@ -43,7 +40,7 @@ export const convertHexToOklch = (hex: string): Oklch => {
 
 // Convert image url to byte array
 const getImageDataFromUrl = async (_url: string) => {
-  const url = getOptimizedPhotoUrlForManipulation(_url, IS_PREVIEW);
+  const url = getOptimizedPhotoUrlForManipulation(_url);
   const imageBuffer = await fetch(decodeURIComponent(url))
     .then(res => res.arrayBuffer());
   const image = sharp(imageBuffer);

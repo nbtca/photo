@@ -48,7 +48,7 @@ import { Tags, convertTagsForForm } from '@/tag';
 import usePreventNavigation from '@/utility/usePreventNavigation';
 import { useAppState } from '@/app/AppState';
 import UpdateBlurDataButton from '../UpdateBlurDataButton';
-import { BLUR_ENABLED, IS_PREVIEW } from '@/app/config';
+import { BLUR_ENABLED } from '@/app/config';
 import ErrorNote from '@/components/ErrorNote';
 import { convertRecipesForForm, Recipes } from '@/recipe';
 import deepEqual from 'fast-deep-equal/es6/react';
@@ -268,10 +268,7 @@ export default function PhotoForm({
     type === 'edit' &&
     formData.url
       ? <UpdateBlurDataButton
-        photoUrl={getOptimizedPhotoUrlForManipulation(
-          formData.url,
-          IS_PREVIEW,
-        )}
+        photoUrl={getOptimizedPhotoUrlForManipulation(formData.url)}
         onUpdatedBlurData={blurData =>
           setFormData(data => ({ ...data, blurData }))}
       />
