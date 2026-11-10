@@ -31,7 +31,6 @@ import FieldsetWithStatus from '@/components/FieldsetWithStatus';
 import Checkbox from '@/components/Checkbox';
 import {
   createPhotoAction,
-  getAiColorAction,
   updatePhotoAction,
 } from '../actions';
 import SubmitButtonWithStatus from '@/components/SubmitButtonWithStatus';
@@ -46,11 +45,6 @@ import { toastSuccess, toastWarning } from '@/toast';
 import { getDimensionsFromSize } from '@/utility/size';
 import ImageWithFallback from '@/components/image/ImageWithFallback';
 import { Tags, convertTagsForForm } from '@/tag';
-import { AiContent } from '../ai/useAiImageQueries';
-import AiButton from '../ai/AiButton';
-import { HiSparkles } from 'react-icons/hi';
-import LoaderButton from '@/components/primitives/LoaderButton';
-import Spinner from '@/components/Spinner';
 import usePreventNavigation from '@/utility/usePreventNavigation';
 import { useAppState } from '@/app/AppState';
 import UpdateBlurDataButton from '../UpdateBlurDataButton';
@@ -136,10 +130,8 @@ export default function PhotoForm({
   uniqueFilms,
   uniqueCameras,
   uniqueLenses,
-  aiContent,
   shouldStripGpsData,
   onTitleChange,
-  onFormDataChange,
   onFormStatusChange,
 }: {
   type?: 'create' | 'edit'
@@ -154,10 +146,8 @@ export default function PhotoForm({
   uniqueFilms: Films
   uniqueCameras?: Cameras
   uniqueLenses?: Lenses
-  aiContent?: AiContent
   shouldStripGpsData?: boolean
   onTitleChange?: (updatedTitle: string) => void
-  onFormDataChange?: (formData: Partial<PhotoFormData>) => void,
   onFormStatusChange?: (pending: boolean) => void
 }) {
   const redirectParam = useSearchParams().get(PARAM_REDIRECT);
@@ -181,7 +171,6 @@ export default function PhotoForm({
   const [albumTitles, setAlbumTitles] = useState(photoAlbumTitles
     .sort((a, b) => a.localeCompare(b))
     .join(','));
-  const [isLoadingKeyColor, setIsLoadingKeyColor] = useState(false);
 
   const areAlbumTitlesModified = albumTitles !== photoAlbumTitles
     .sort((a, b) => a.localeCompare(b))
@@ -205,9 +194,7 @@ export default function PhotoForm({
 
   const canFormBeSubmitted =
     (type === 'create' || formHasChanged) &&
-    isFormValid(formData) &&
-    !aiContent?.isLoading &&
-    !isLoadingKeyColor;
+    isFormValid(formData);
 
   // Update form when EXIF data
   // is refreshed by parent
@@ -265,26 +252,6 @@ export default function PhotoForm({
 
   const url = formData.url ?? '';
 
-  const regenerateKeyColor = useCallback(async () => {
-    if (!url) { return; }
-    setIsLoadingKeyColor(true);
-    try {
-      const ai = await getAiColorAction(url);
-      if (ai) {
-        setFormData(data => formDataWithUpdatedKeyColor(
-          data,
-          convertOklchToJsonString(ai),
-        ));
-      } else {
-        toastWarning('Could not generate key color');
-      }
-    } catch (error: any) {
-      toastWarning(error.message || 'Could not generate key color');
-    } finally {
-      setIsLoadingKeyColor(false);
-    }
-  }, [url]);
-
   useEffect(() => {
     if (updatedBlurData) {
       setFormData(data => updatedBlurData
@@ -295,114 +262,20 @@ export default function PhotoForm({
     }
   }, [updatedBlurData]);
 
-  useEffect(() =>
-    setFormData(data => aiContent?.title
-      ? { ...data, title: aiContent?.title }
-      : data),
-  [aiContent?.title]);
-
-  useEffect(() =>
-    setFormData(data => aiContent?.caption
-      ? { ...data, caption: aiContent?.caption }
-      : data),
-  [aiContent?.caption]);
-
-  useEffect(() =>
-    setFormData(data => aiContent?.tags
-      ? { ...data, tags: aiContent?.tags }
-      : data),
-  [aiContent?.tags]);
-
-  useEffect(() =>
-    setFormData(data => aiContent?.semanticDescription
-      ? { ...data, semanticDescription: aiContent?.semanticDescription }
-      : data),
-  [aiContent?.semanticDescription]);
-
-  useEffect(() => {
-    onFormDataChange?.(formData);
-  }, [onFormDataChange, formData]);
-
-  const isFieldGeneratingAi = (key: keyof PhotoFormData) => {
-    switch (key) {
-      case 'title':
-        return aiContent?.isLoadingTitle;
-      case 'caption':
-        return aiContent?.isLoadingCaption;
-      case 'tags':
-        return aiContent?.isLoadingTags;
-      case 'semanticDescription':
-        return aiContent?.isLoadingSemantic;
-      case 'keyColor':
-        return isLoadingKeyColor;
-      default:
-        return false;
-    }
-  };
-
-  const accessoryForField = (key: keyof PhotoFormData) => {
-    if (aiContent) {
-      switch (key) {
-        case 'title':
-          return <AiButton
-            tabIndex={-1}
-            aiContent={aiContent}
-            requestFields={['title']}
-            shouldConfirm={Boolean(formData.title)}
-            className="h-full"
-          />;
-        case 'caption':
-          return <AiButton
-            tabIndex={-1}
-            aiContent={aiContent}
-            requestFields={['caption']}
-            shouldConfirm={Boolean(formData.caption)}
-            className="h-full"
-          />;
-        case 'tags':
-          return <AiButton
-            tabIndex={-1}
-            aiContent={aiContent}
-            requestFields={['tags']}
-            shouldConfirm={Boolean(formData.tags)}
-            className="h-full"
-          />;
-        case 'semanticDescription':
-          return <AiButton
-            tabIndex={-1}
-            aiContent={aiContent}
-            requestFields={['semantic']}
-            shouldConfirm={Boolean(formData.semanticDescription)}
-          />;
-        case 'keyColor':
-          return <LoaderButton
-            tabIndex={-1}
-            icon={<HiSparkles size={16} />}
-            className="h-full"
-            isLoading={isLoadingKeyColor}
-            onClick={() => {
-              if (
-                !formData.keyColor ||
-                confirm('Are you sure you want to overwrite existing content?')
-              ) {
-                regenerateKeyColor();
-              }
-            }}
-          />;
-        case 'blurData':
-          return shouldDebugImageFallbacks && type === 'edit' && formData.url
-            ? <UpdateBlurDataButton
-              photoUrl={getOptimizedPhotoUrlForManipulation(
-                formData.url,
-                IS_PREVIEW,
-              )}
-              onUpdatedBlurData={blurData =>
-                setFormData(data => ({ ...data, blurData }))}
-            />
-            : null;
-      }
-    }
-  };
+  const accessoryForField = (key: keyof PhotoFormData) =>
+    key === 'blurData' &&
+    shouldDebugImageFallbacks &&
+    type === 'edit' &&
+    formData.url
+      ? <UpdateBlurDataButton
+        photoUrl={getOptimizedPhotoUrlForManipulation(
+          formData.url,
+          IS_PREVIEW,
+        )}
+        onUpdatedBlurData={blurData =>
+          setFormData(data => ({ ...data, blurData }))}
+      />
+      : null;
 
   const footerForField = (key: keyof PhotoFormData) => {
     switch (key) {
@@ -500,7 +373,6 @@ export default function PhotoForm({
       convertCameraModelsForForm(uniqueCameras),
       convertLensMakesForForm(uniqueLenses),
       convertLensModelsForForm(uniqueLenses),
-      aiContent !== undefined,
       shouldStripGpsData,
     ), [
     uniqueTags,
@@ -511,7 +383,6 @@ export default function PhotoForm({
     uniqueLenses,
     formData.make,
     detectedFilm,
-    aiContent,
     shouldStripGpsData,
   ]);
 
@@ -582,29 +453,6 @@ export default function PhotoForm({
               </div>
             </div>
           </div>}
-        <div className={clsx(
-          'absolute top-2 left-2 transition-opacity duration-500',
-          aiContent?.isLoading ? 'opacity-100' : 'opacity-0',
-        )}>
-          <div className={clsx(
-            'leading-none text-xs font-medium uppercase tracking-wide',
-            'px-1.5 py-1 rounded-[4px]',
-            'inline-flex items-center gap-2',
-            'bg-white/70 dark:bg-black/60 backdrop-blur-md',
-            'border border-gray-900/10 dark:border-gray-700/70',
-            'select-none',
-          )}>
-            <Spinner
-              color="text"
-              size={9}
-              className={clsx(
-                'text-extra-dim',
-                'translate-x-[1px] translate-y-[0.5px]',
-              )}
-            />
-            Analyzing image
-          </div>
-        </div>
       </div>
       {formActionErrorMessage &&
         <ErrorNote>{formActionErrorMessage}</ErrorNote>}
@@ -755,10 +603,7 @@ export default function PhotoForm({
                       placeholder: loadingMessage && !formData[key]
                         ? loadingMessage
                         : undefined,
-                      loading: (
-                        (loadingMessage && !formData[key] ? true : false) ||
-                        isFieldGeneratingAi(key)
-                      ),
+                      loading: Boolean(loadingMessage && !formData[key]),
                       type,
                       accessory: accessoryForField(key),
                       footer: footerForField(key),

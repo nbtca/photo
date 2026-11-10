@@ -21,7 +21,7 @@ import IconFolder from '@/components/icons/IconFolder';
 import IconSignOut from '@/components/icons/IconSignOut';
 import IconBroom from '@/components/icons/IconBroom';
 import IconAdminArrow from '@/components/icons/IconAdminArrow';
-import InsightsIndicatorDot from './insights/InsightsIndicatorDot';
+import { FaCircle } from 'react-icons/fa6';
 import Spinner from '@/components/Spinner';
 import { useAppText } from '@/i18n/state/client';
 import SwitcherItemMenu from '@/components/switcher/SwitcherItemMenu';
@@ -110,10 +110,9 @@ export default function AdminAppMenu({
           <span className="mr-3 text-blue-500">
             {photosCountNeedSync}
           </span>
-          <InsightsIndicatorDot
-            className="inline-block translate-y-[-1px]"
-            colorOverride="blue"
-            size="small"
+          <FaCircle
+            size={6}
+            className="inline-block translate-y-[-1px] text-blue-500"
           />
         </>,
         icon: <IconBroom

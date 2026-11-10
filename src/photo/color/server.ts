@@ -1,5 +1,4 @@
 import {
-  AI_CONTENT_GENERATION_ENABLED,
   IS_PREVIEW,
 } from '@/app/config';
 import {
@@ -10,8 +9,6 @@ import {
 } from './client';
 import sharp from 'sharp';
 import { extractColors } from 'extract-colors';
-import { getImageBase64FromUrl } from '../server';
-import { generateOpenAiImageQuery } from '@/platforms/openai';
 import { calculateColorSort } from './sort';
 import { getOptimizedPhotoUrlForManipulation } from '../storage';
 
@@ -83,29 +80,19 @@ const getExtractedColorsFromImageUrl = async (url: string) => {
 
 const getColorDataFromImageUrl = async (
   url: string,
-  isBatch?: boolean,
-): Promise<PhotoColorData> => {
-  const ai = AI_CONTENT_GENERATION_ENABLED
-    ? await getColorFromAI(url, isBatch)
-    : undefined;
-  const average = await getAverageColorFromImageUrl(url);
-  const colors = await getExtractedColorsFromImageUrl(url);
-  return {
-    ...ai && { ai },
-    average,
-    colors,
-  };
-};
+): Promise<PhotoColorData> => ({
+  average: await getAverageColorFromImageUrl(url),
+  colors: await getExtractedColorsFromImageUrl(url),
+});
 
 export const getColorFieldsForImageUrl = async (
   url: string,
   _colorData?: PhotoColorData,
-  isBatch?: boolean,
 ) => {
   try {
     const colorData = _colorData && _colorData.ai
       ? _colorData
-      : await getColorDataFromImageUrl(url, isBatch);
+      : await getColorDataFromImageUrl(url);
     return {
       colorData,
       colorSort: calculateColorSort(colorData),
@@ -144,29 +131,4 @@ export const getColorFieldsForPhotoForm = async (
       ...rest,
     };
   }
-};
-
-export const AI_COLOR_QUERY = `
-Does this image have a primary subject color?
-If yes, what is the approximate hex color of the subject.
-If not, what is the approximate hex color of the background.
-Prefer pops of color over large neutral fields.
-Respond only with a hex color value:`;
-
-export const parseAiColorResponse = (text?: string) => {
-  const hex = text?.match(/#*([a-f0-9]{6})/i)?.[1];
-  if (hex) {
-    return convertHexToOklch(`#${hex}`);
-  }
-};
-
-export const getColorFromAI = async (
-  _url: string,
-  isBatch?: boolean,
-) => {
-  const url = getOptimizedPhotoUrlForManipulation(_url, IS_PREVIEW);
-  const image = await getImageBase64FromUrl(url);
-  return parseAiColorResponse(
-    await generateOpenAiImageQuery(image, AI_COLOR_QUERY, isBatch),
-  );
 };

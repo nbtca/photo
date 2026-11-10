@@ -9,7 +9,6 @@ import {
 } from './form';
 import PhotoForm from './form/PhotoForm';
 import { Tags } from '@/tag';
-import AiButton from './ai/AiButton';
 import usePhotoFormParent from './form/usePhotoFormParent';
 import { useState } from 'react';
 import { Recipes } from '@/recipe';
@@ -29,8 +28,6 @@ export default function PhotoEditPageClient({
   uniqueFilms,
   uniqueCameras,
   uniqueLenses,
-  hasAiContentGeneration,
-  imageThumbnailBase64,
   blurData,
 }: {
   photo: Photo
@@ -42,8 +39,6 @@ export default function PhotoEditPageClient({
   uniqueFilms: Films
   uniqueCameras: Cameras
   uniqueLenses: Lenses
-  hasAiContentGeneration: boolean
-  imageThumbnailBase64: string
   blurData: string
 }) {
   const photoForm = convertPhotoToFormData(photo);
@@ -53,13 +48,7 @@ export default function PhotoEditPageClient({
     setIsPending,
     updatedTitle,
     setUpdatedTitle,
-    shouldConfirmAiTextGeneration,
-    setShouldConfirmAiTextGeneration,
-    aiContent,
-  } = usePhotoFormParent({
-    photoForm,
-    imageThumbnailBase64,
-  });
+  } = usePhotoFormParent();
 
   const [updatedExifData] =
     useState<Partial<PhotoFormData>>();
@@ -72,15 +61,6 @@ export default function PhotoEditPageClient({
         ? updatedTitle
         : photo.title || photo.id}
       breadcrumbEllipsis
-      accessory={
-        <div className="flex gap-2">
-          {hasAiContentGeneration &&
-            <AiButton {...{
-              aiContent,
-              shouldConfirm: shouldConfirmAiTextGeneration,
-              tooltip: 'Generate AI text for all fields',
-            }} />}
-        </div>}
       isLoading={pending}
     >
       <PhotoForm
@@ -96,10 +76,8 @@ export default function PhotoEditPageClient({
         uniqueFilms={uniqueFilms}
         uniqueCameras={uniqueCameras}
         uniqueLenses={uniqueLenses}
-        aiContent={hasAiContentGeneration ? aiContent : undefined}
         onTitleChange={setUpdatedTitle}
         onFormStatusChange={setIsPending}
-        onFormDataChange={setShouldConfirmAiTextGeneration}
       />
     </AdminChildPage>
   );

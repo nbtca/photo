@@ -1,7 +1,6 @@
 import { ReactNode } from 'react';
 import { ThemeProvider } from 'next-themes';
 import {
-  ADMIN_AI_MODEL_DEBUG_ENABLED,
   ADMIN_DEBUG_TOOLS_ENABLED,
   DEFAULT_THEME,
 } from '@/app/config';
@@ -24,7 +23,6 @@ export default function StateProviders({
   return (
     <AppStateProvider
       areAdminDebugToolsEnabled={ADMIN_DEBUG_TOOLS_ENABLED}
-      isAdminAiModelDebugEnabled={ADMIN_AI_MODEL_DEBUG_ENABLED}
     >
       <UploadStateProvider>
         <AppTextProvider>

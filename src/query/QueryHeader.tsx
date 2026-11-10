@@ -2,7 +2,6 @@
 
 import { descriptionForPhotoSet, Photo, PhotoDateRangePostgres } from '@/photo';
 import PhotoHeader from '@/photo/PhotoHeader';
-import { AI_CONTENT_GENERATION_ENABLED } from '@/app/config';
 import { useAppText } from '@/i18n/state/client';
 import PhotoQuery from './PhotoQuery';
 
@@ -45,7 +44,6 @@ export default function QueryHeader({
       indexNumber={indexNumber}
       count={count}
       dateRange={dateRange}
-      hasAiContentGeneration={AI_CONTENT_GENERATION_ENABLED}
       includeShareButton
     />
   );

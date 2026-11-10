@@ -1,15 +1,10 @@
 'use client';
 
-import LinkWithIconLoader from '@/components/LinkWithIconLoader';
 import Note from '@/components/Note';
 import AppGrid from '@/components/AppGrid';
-import Spinner from '@/components/Spinner';
 import {
-  PATH_ADMIN_CONFIGURATION,
-  PATH_ADMIN_INSIGHTS,
   PATH_ADMIN_PHOTOS_UPDATES,
   checkPathPrefix,
-  isPathAdminInfo,
   isPathAdminPhotoEdit,
   isPathTopLevelAdmin,
 } from '@/app/path';
@@ -19,8 +14,6 @@ import { differenceInMinutes } from 'date-fns';
 import { usePathname } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { FaRegClock } from 'react-icons/fa';
-import AdminAppInfoIcon from './AdminAppInfoIcon';
-import AdminInfoNav from './AdminInfoNav';
 import LinkWithLoaderBackground from '@/components/LinkWithLoaderBackground';
 import MaskedScroll from '@/components/MaskedScroll';
 import StickySubNav from '@/components/StickySubNav';
@@ -32,14 +25,12 @@ const areTimesRecent = (dates: Date[]) => dates
 export default function AdminNavClient({
   items,
   mostRecentPhotoUpdateTime,
-  includeInsights = true,
 }: {
   items: {
     label: string,
     href: string,
   }[]
   mostRecentPhotoUpdateTime?: Date
-  includeInsights?: boolean
 }) {
   const pathname = usePathname();
 
@@ -90,33 +81,15 @@ export default function AdminNavClient({
                 {label}
               </LinkWithLoaderBackground>)}
           </MaskedScroll>
-          <LinkWithIconLoader
-            href={includeInsights
-              ? PATH_ADMIN_INSIGHTS
-              : PATH_ADMIN_CONFIGURATION}
-            className={clsx(
-              isPathAdminInfo(pathname)
-                ? 'font-bold'
-                : 'text-dim',
-              'hover:text-main active:text-dim',
-            )}
-            icon={<AdminAppInfoIcon />}
-            loader={<Spinner className="translate-y-[-0.75px]" />}
-          />
         </div>
       </StickySubNav>
-      {(shouldShowBanner || isPathAdminInfo(pathname)) &&
+      {shouldShowBanner &&
         <AppGrid
           contentMain={
-            <div className="space-y-4">
-              {shouldShowBanner &&
-                <Note icon={<FaRegClock className="shrink-0" />}>
-                  Photo updates detected—they may take several minutes to show
-                  up for visitors
-                </Note>}
-              {isPathAdminInfo(pathname) &&
-                <AdminInfoNav {...{ includeInsights }} />}
-            </div>
+            <Note icon={<FaRegClock className="shrink-0" />}>
+              Photo updates detected—they may take several minutes to show
+              up for visitors
+            </Note>
           }
         />}
     </>

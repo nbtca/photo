@@ -10,13 +10,11 @@ import {
 } from '@/photo/cache';
 import UploadPageClient from '@/photo/UploadPageClient';
 import {
-  AI_CONTENT_GENERATION_ENABLED,
   BLUR_ENABLED,
 } from '@/app/config';
 import ErrorNote from '@/components/ErrorNote';
 import { getRecipeTitleForData } from '@/photo/query';
 import { getAlbumsWithMeta } from '@/album/query';
-import { addAiTextToFormData } from '@/photo/ai/server';
 import AppGrid from '@/components/AppGrid';
 
 export const maxDuration = 60;
@@ -38,8 +36,7 @@ export default async function UploadPage({ params, searchParams }: Params) {
     uniqueCameras,
     uniqueLenses, {
       blobId,
-      formDataFromExif: _formDataFromExif,
-      imageResizedBase64: imageThumbnailBase64,
+      formDataFromExif,
       shouldStripGpsData,
       error,
     }] = await Promise.all([
@@ -52,37 +49,22 @@ export default async function UploadPage({ params, searchParams }: Params) {
     extractImageDataFromBlobPath(uploadPath, {
       includeInitialPhotoFields: true,
       generateBlurData: BLUR_ENABLED,
-      generateResizedImage: AI_CONTENT_GENERATION_ENABLED,
     }),
   ]);
 
-  const isDataMissing =
-    !_formDataFromExif ||
-    (AI_CONTENT_GENERATION_ENABLED && !imageThumbnailBase64);
+  const isDataMissing = !formDataFromExif;
 
   if (isDataMissing && !error) {
     // Only redirect if there's no error to report
     redirect(PATH_ADMIN);
   }
 
-  const [
-    recipeTitle,
-    formDataFromExif,
-  ] = await Promise.all([
-    _formDataFromExif?.recipeData && _formDataFromExif.film
-      ? getRecipeTitleForData(
-        _formDataFromExif.recipeData, 
-        _formDataFromExif.film,
-      )
-      : undefined,
-    addAiTextToFormData({
-      formData: _formDataFromExif,
-      imageBase64: imageThumbnailBase64,
-      uniqueTags,
-    }),
-  ]);
-
-  const hasAiContentGeneration = AI_CONTENT_GENERATION_ENABLED;
+  const recipeTitle = formDataFromExif?.recipeData && formDataFromExif.film
+    ? await getRecipeTitleForData(
+      formDataFromExif.recipeData,
+      formDataFromExif.film,
+    )
+    : undefined;
 
   if (formDataFromExif) {
     if (recipeTitle) {
@@ -104,8 +86,6 @@ export default async function UploadPage({ params, searchParams }: Params) {
         uniqueFilms,
         uniqueCameras,
         uniqueLenses,
-        hasAiContentGeneration,
-        imageThumbnailBase64,
         shouldStripGpsData,
       }} />
       : <AppGrid contentMain={

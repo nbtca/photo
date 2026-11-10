@@ -3,7 +3,6 @@ import PhotoHeader from '@/photo/PhotoHeader';
 import { Camera, cameraFromPhoto } from '.';
 import PhotoCamera from './PhotoCamera';
 import { descriptionForCameraPhotos } from './meta';
-import { AI_CONTENT_GENERATION_ENABLED } from '@/app/config';
 import { getAppText } from '@/i18n/state/server';
 
 export default async function CameraHeader({
@@ -45,7 +44,6 @@ export default async function CameraHeader({
       indexNumber={indexNumber}
       count={count}
       dateRange={dateRange}
-      hasAiContentGeneration={AI_CONTENT_GENERATION_ENABLED}
       includeShareButton
     />
   );

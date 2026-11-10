@@ -49,6 +49,5 @@ export const getAdminDataAction = async () => {
     albumsCount: admin ? albumsCount : 0,
     tagsCount: admin ? tagsCount : 0,
     recipesCount: admin ? recipesCount : 0,
-    insightsIndicatorStatus: undefined,
   } as const;
 };

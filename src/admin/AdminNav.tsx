@@ -48,9 +48,6 @@ export default function AdminNav() {
   }
 
   return (
-    <AdminNavClient {...{
-      items,
-      includeInsights: false,
-    }} />
+    <AdminNavClient items={items} />
   );
 }

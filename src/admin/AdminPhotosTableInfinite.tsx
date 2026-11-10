@@ -8,7 +8,6 @@ import { ComponentProps } from 'react';
 export default function AdminPhotosTableInfinite({
   initialOffset,
   itemsPerPage,
-  hasAiContentGeneration,
   canEdit,
   canDelete,
   debugColorData,
@@ -31,7 +30,6 @@ export default function AdminPhotosTableInfinite({
           photos={photos}
           onLastPhotoVisible={onLastPhotoVisible}
           revalidatePhoto={revalidatePhoto}
-          hasAiContentGeneration={hasAiContentGeneration}
           canEdit={canEdit}
           canDelete={canDelete}
           debugColorData={debugColorData}

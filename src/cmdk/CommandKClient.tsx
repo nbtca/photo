@@ -14,11 +14,6 @@ import {
 } from 'react';
 import {
   PATH_LIBRARY,
-  PATH_ADMIN_AI_MODELS,
-  PATH_ADMIN_BASELINE,
-  PATH_ADMIN_COMPONENTS,
-  PATH_ADMIN_CONFIGURATION,
-  PATH_ADMIN_INSIGHTS,
   PATH_ADMIN_PHOTOS,
   PATH_ADMIN_RECIPES,
   PATH_ADMIN_ALBUMS,
@@ -48,7 +43,7 @@ import { clsx } from 'clsx/lite';
 import Spinner from '../components/Spinner';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import { BiDesktop, BiLockAlt, BiMoon, BiSun } from 'react-icons/bi';
+import { BiDesktop, BiMoon, BiSun } from 'react-icons/bi';
 import { IoClose, IoInvertModeSharp } from 'react-icons/io5';
 import { useAppState } from '@/app/AppState';
 import { useUploadState } from '@/admin/upload/UploadState';
@@ -79,7 +74,6 @@ import {
 } from '@/app/config';
 import { DialogDescription, DialogTitle } from '@radix-ui/react-dialog';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
-import InsightsIndicatorDot from '@/admin/insights/InsightsIndicatorDot';
 import { PhotoSetCategories, getCategoryTitle } from '@/category';
 import { formatCameraText } from '@/camera';
 import { formatFocalLength } from '@/focal';
@@ -184,15 +178,12 @@ export default function CommandKClient({
     albumsCount,
     tagsCount,
     recipesCount,
-    insightsIndicatorStatus,
     isGridHighDensity,
     areZoomControlsShown,
     arePhotosMatted,
     areAdminDebugToolsEnabled,
-    isAdminAiModelDebugEnabled,
     shouldShowBaselineGrid,
     shouldDebugImageFallbacks,
-    shouldDebugInsights,
     shouldDebugRecipeOverlays,
     setIsCommandKOpen: setIsOpen,
     setNextCommandKQuery,
@@ -201,7 +192,6 @@ export default function CommandKClient({
     setAreZoomControlsShown,
     setArePhotosMatted,
     setShouldDebugImageFallbacks,
-    setShouldDebugInsights,
     setShouldDebugRecipeOverlays,
   } = useAppState();
 
@@ -563,11 +553,6 @@ export default function CommandKClient({
           shouldShowBaselineGrid,
         ),
         renderToggle(
-          'Insights Debugging',
-          setShouldDebugInsights,
-          shouldDebugInsights,
-        ),
-        renderToggle(
           'Recipe Overlays',
           setShouldDebugRecipeOverlays,
           shouldDebugRecipeOverlays,
@@ -737,38 +722,7 @@ export default function CommandKClient({
           invalidateSwr?.();
           toastSuccess(appText.admin.clearCacheSuccess);
         }),
-    }, {
-      explicitKey: appText.admin.appInsights,
-      label: <span className="flex items-center gap-3">
-        {appText.admin.appInsights}
-        {insightsIndicatorStatus &&
-          <InsightsIndicatorDot />}
-      </span>,
-      annotation: <IconLock narrow />,
-      path: PATH_ADMIN_INSIGHTS,
-    }, {
-      label: appText.admin.appConfig,
-      annotation: <IconLock narrow />,
-      path: PATH_ADMIN_CONFIGURATION,
     });
-    if (areAdminDebugToolsEnabled) {
-      adminSection.items.push({
-        label: 'Baseline Overview',
-        annotation: <BiLockAlt />,
-        path: PATH_ADMIN_BASELINE,
-      }, {
-        label: 'Components Overview',
-        annotation: <BiLockAlt />,
-        path: PATH_ADMIN_COMPONENTS,
-      });
-    }
-    if (isAdminAiModelDebugEnabled) {
-      adminSection.items.push({
-        label: 'AI Model Comparison',
-        annotation: <BiLockAlt />,
-        path: PATH_ADMIN_AI_MODELS,
-      });
-    }
     adminSection.items.push({
       label: appText.auth.signOut,
       action: () => signOutAction()

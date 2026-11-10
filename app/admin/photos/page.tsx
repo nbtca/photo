@@ -5,7 +5,6 @@ import AdminPhotosClient from '@/admin/AdminPhotosClient';
 import { cookies } from 'next/headers';
 import { TIMEZONE_COOKIE_NAME } from '@/utility/timezone';
 import {
-  AI_CONTENT_GENERATION_ENABLED,
   PRESERVE_ORIGINAL_UPLOADS,
 } from '@/app/config';
 
@@ -46,7 +45,6 @@ export default async function AdminPhotosPage() {
       photosCount,
       photosCountNeedsSync,
       shouldResize: !PRESERVE_ORIGINAL_UPLOADS,
-      hasAiContentGeneration: AI_CONTENT_GENERATION_ENABLED,
       blobPhotoUrls,
       infiniteScrollInitial: INFINITE_SCROLL_INITIAL_ADMIN_PHOTOS,
       infiniteScrollMultiple: INFINITE_SCROLL_MULTIPLE_ADMIN_PHOTOS,
