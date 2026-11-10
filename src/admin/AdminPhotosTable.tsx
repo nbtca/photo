@@ -9,7 +9,6 @@ import { pathForAdminPhotoEdit } from '@/app/path';
 import { COLOR_SORT_ENABLED } from '@/app/config';
 import PhotoDate from '@/photo/PhotoDate';
 import EditButton from './EditButton';
-import { useAppState } from '@/app/AppState';
 import { RevalidatePhoto } from '@/photo/InfinitePhotoScroll';
 import { Timezone } from '@/utility/timezone';
 import { photoNeedsToBeUpdated } from '@/photo/update';
@@ -30,11 +29,8 @@ export default function AdminPhotosTable({
   photoIdsSyncing = [],
   dateType = 'createdAt',
   canEdit = true,
-  canSync,
   canDelete = true,
   timezone,
-  shouldScrollIntoViewOnExternalSync,
-  updateMode,
   debugColorData,
 }: {
   photos: Photo[],
@@ -43,16 +39,10 @@ export default function AdminPhotosTable({
   photoIdsSyncing?: string[]
   dateType?: 'createdAt' | 'updatedAt'
   canEdit?: boolean
-  canSync?: boolean
   canDelete?: boolean
   timezone?: Timezone
-  shouldScrollIntoViewOnExternalSync?: boolean
-  // Only sync color data where possible
-  updateMode?: boolean
   debugColorData?: boolean
 }) {
-  const { invalidateSwr } = useAppState();
-
   const opacityForPhotoId = (photoId: string) =>
     photoIdsSyncing.length > 0 && !photoIdsSyncing.includes(photoId)
       ? 'opacity-40'

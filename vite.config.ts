@@ -25,8 +25,8 @@ const ENV: Record<string, string> = {
   NEXT_PUBLIC_HIDE_CATEGORY_IMAGE_HOVERS: '1',
 };
 
-const src = (file: string) => path.resolve(__dirname, 'src', file);
-const spa = (file: string) => path.resolve(__dirname, 'spa', file);
+const src = (file: string) => path.resolve(import.meta.dirname, 'src', file);
+const spa = (file: string) => path.resolve(import.meta.dirname, 'spa', file);
 
 // Server components are async functions. In the browser they run through
 // wrapAsync, which suspends on their result.
