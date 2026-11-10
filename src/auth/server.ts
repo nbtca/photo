@@ -13,6 +13,7 @@ export const signIn = async (..._args: unknown[]) => {
 
 // Cloudflare Access serves this path on every protected domain.
 export const signOut = async (_options?: object) => {
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   location.assign('/cdn-cgi/access/logout');
 };
 

@@ -75,14 +75,15 @@ export default defineConfig([
       ],
     },
   }, {
-  // SQL statements read better unwrapped.
-  files: ['worker/**', 'test/**'],
-  rules: {
-    '@stylistic/max-len': 'off',
-    '@typescript-eslint/no-unused-vars': ['warn', {
-      argsIgnorePattern: '^_',
-      varsIgnorePattern: '^_',
-      ignoreRestSiblings: true,
-    }],
+    // SQL statements read better unwrapped.
+    files: ['worker/**', 'test/**'],
+    rules: {
+      '@stylistic/max-len': 'off',
+      '@typescript-eslint/no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+        ignoreRestSiblings: true,
+      }],
+    },
   },
-}]);
+]);
