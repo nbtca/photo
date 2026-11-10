@@ -50,7 +50,6 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       # Migrations run before the code that needs them, so each one must also work with the previous release.
-      - run: pnpm exec wrangler d1 migrations apply photo --remote
       - run: pnpm run deploy
       - name: Smoke test
         run: |

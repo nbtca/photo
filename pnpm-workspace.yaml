@@ -4,53 +4,6 @@ allowBuilds:
   '@tailwindcss/oxide': true
   sharp: true
   unrs-resolver: true
-minimumReleaseAgeExclude:
-  - baseline-browser-mapping@2.11.27
-  - '@tailwindcss/node@4.3.3'
-  - '@tailwindcss/oxide-android-arm64@4.3.3'
-  - '@tailwindcss/oxide-darwin-arm64@4.3.3'
-  - '@tailwindcss/oxide-darwin-x64@4.3.3'
-  - '@tailwindcss/oxide-freebsd-x64@4.3.3'
-  - '@tailwindcss/oxide-linux-arm-gnueabihf@4.3.3'
-  - '@tailwindcss/oxide-linux-arm64-gnu@4.3.3'
-  - '@tailwindcss/oxide-linux-arm64-musl@4.3.3'
-  - '@tailwindcss/oxide-linux-x64-gnu@4.3.3'
-  - '@tailwindcss/oxide-linux-x64-musl@4.3.3'
-  - '@tailwindcss/oxide-wasm32-wasi@4.3.3'
-  - '@tailwindcss/oxide-win32-arm64-msvc@4.3.3'
-  - '@tailwindcss/oxide-win32-x64-msvc@4.3.3'
-  - '@tailwindcss/oxide@4.3.3'
-  - '@tailwindcss/postcss@4.3.3'
-  - tailwindcss@4.3.3
-  - '@types/node@26.6.4'
-  - '@img/sharp-darwin-arm64@0.35.4'
-  - '@img/sharp-darwin-x64@0.35.4'
-  - '@img/sharp-freebsd-wasm32@0.35.4'
-  - '@img/sharp-libvips-darwin-arm64@1.3.3'
-  - '@img/sharp-libvips-darwin-x64@1.3.3'
-  - '@img/sharp-libvips-linux-arm64@1.3.3'
-  - '@img/sharp-libvips-linux-arm@1.3.3'
-  - '@img/sharp-libvips-linux-ppc64@1.3.3'
-  - '@img/sharp-libvips-linux-riscv64@1.3.3'
-  - '@img/sharp-libvips-linux-s390x@1.3.3'
-  - '@img/sharp-libvips-linux-x64@1.3.3'
-  - '@img/sharp-libvips-linuxmusl-arm64@1.3.3'
-  - '@img/sharp-libvips-linuxmusl-x64@1.3.3'
-  - '@img/sharp-linux-arm64@0.35.4'
-  - '@img/sharp-linux-arm@0.35.4'
-  - '@img/sharp-linux-ppc64@0.35.4'
-  - '@img/sharp-linux-riscv64@0.35.4'
-  - '@img/sharp-linux-s390x@0.35.4'
-  - '@img/sharp-linux-x64@0.35.4'
-  - '@img/sharp-linuxmusl-arm64@0.35.4'
-  - '@img/sharp-linuxmusl-x64@0.35.4'
-  - '@img/sharp-wasm32@0.35.4'
-  - '@img/sharp-webcontainers-wasm32@0.35.4'
-  - '@img/sharp-win32-arm64@0.35.4'
-  - '@img/sharp-win32-ia32@0.35.4'
-  - '@img/sharp-win32-x64@0.35.4'
-  - sharp@0.35.4
-  - viewerjs@1.15.2
 overrides:
   minimatch@>=7 <11.0.1: 11.0.1
   sharp@<0.35.5: 0.35.5
