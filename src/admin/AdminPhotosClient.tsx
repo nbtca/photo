@@ -25,7 +25,6 @@ export default function AdminPhotosClient({
   photosCountNeedsSync,
   blobPhotoUrls,
   shouldResize,
-  hasAiContentGeneration,
   infiniteScrollInitial,
   infiniteScrollMultiple,
   timezone,
@@ -36,7 +35,6 @@ export default function AdminPhotosClient({
   photosCountNeedsSync: number
   blobPhotoUrls: StorageListResponse
   shouldResize: boolean
-  hasAiContentGeneration: boolean
   infiniteScrollInitial: number
   infiniteScrollMultiple: number
   timezone: Timezone
@@ -114,7 +112,6 @@ export default function AdminPhotosClient({
           <div className="space-y-[6px] sm:space-y-[10px]">
             <AdminPhotosTable
               photos={photos}
-              hasAiContentGeneration={hasAiContentGeneration}
               timezone={timezone}
               debugColorData={debugColorData}
             />
@@ -122,7 +119,6 @@ export default function AdminPhotosClient({
               <AdminPhotosTableInfinite
                 initialOffset={infiniteScrollInitial}
                 itemsPerPage={infiniteScrollMultiple}
-                hasAiContentGeneration={hasAiContentGeneration}
                 timezone={timezone}
                 debugColorData={debugColorData}
               />}

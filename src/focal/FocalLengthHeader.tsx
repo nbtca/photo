@@ -2,7 +2,6 @@ import { Photo, PhotoDateRangePostgres } from '@/photo';
 import { descriptionForFocalLengthPhotos } from '.';
 import PhotoHeader from '@/photo/PhotoHeader';
 import PhotoFocalLength from './PhotoFocalLength';
-import { AI_CONTENT_GENERATION_ENABLED } from '@/app/config';
 import { getAppText } from '@/i18n/state/server';
 
 export default async function FocalLengthHeader({
@@ -41,7 +40,6 @@ export default async function FocalLengthHeader({
       indexNumber={indexNumber}
       count={count}
       dateRange={dateRange}
-      hasAiContentGeneration={AI_CONTENT_GENERATION_ENABLED}
       includeShareButton
     />
   );

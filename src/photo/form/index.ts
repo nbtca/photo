@@ -115,7 +115,6 @@ const FORM_METADATA = (
   cameraModelOptions?: AnnotatedTag[],
   lensMakeOptions?: AnnotatedTag[],
   lensModelOptions?: AnnotatedTag[],
-  hasAiContentGeneration?: boolean,
   shouldStripGpsData?: boolean,
 ): Record<keyof PhotoFormData, FormMeta> => ({
   title: {
@@ -142,13 +141,13 @@ const FORM_METADATA = (
     label: 'semantic description (not visible)',
     capitalize: true,
     validateStringMaxLength: STRING_MAX_LENGTH_LONG,
-    shouldHide: () => !hasAiContentGeneration,
+    shouldHide: () => true,
   },
   keyColor: {
     section: 'text',
     label: 'key color',
     excludeFromInsert: true,
-    shouldHide: () => !hasAiContentGeneration,
+    shouldHide: () => true,
     validate: value => value && !convertJsonStringToOklch(value)
       ? 'Invalid color'
       : undefined,
@@ -429,14 +428,6 @@ export const isFormValid = (formData: Partial<PhotoFormData>) =>
       // eslint-disable-next-line @stylistic/max-len
       (!validateStringMaxLength || (formData[key]?.length ?? 0) <= validateStringMaxLength),
   );
-
-export const formHasExistingAiTextContent = ({
-  title,
-  caption,
-  tags,
-  semanticDescription,
-}: Partial<PhotoFormData> = {}) =>
-  Boolean(title || caption || tags || semanticDescription);
 
 // CREATE FORM DATA: FROM PHOTO
 

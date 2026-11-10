@@ -12,8 +12,6 @@ import { getAuthAction } from '@/auth/actions';
 import useSWR, { useSWRConfig } from 'swr';
 import {
   HIGH_DENSITY_GRID,
-  IS_DEVELOPMENT,
-  IS_PRODUCTION,
   MATTE_PHOTOS,
   SHOW_ZOOM_CONTROLS,
 } from '@/app/config';
@@ -37,17 +35,14 @@ import {
   SWR_KEYS,
   SWRKey,
 } from '@/swr';
-import { warmRedisAction } from './actions';
 import useSupportsHover from '@/utility/useSupportsHover';
 
 export default function AppStateProvider({
   children,
   areAdminDebugToolsEnabled,
-  isAdminAiModelDebugEnabled,
 }: {
   children: ReactNode
   areAdminDebugToolsEnabled?: boolean
-  isAdminAiModelDebugEnabled?: boolean
 }) {
   const router = useRouter();
 
@@ -132,8 +127,6 @@ export default function AppStateProvider({
     useState(false);
   const [shouldShowBaselineGrid, setShouldShowBaselineGrid] =
     useState(false);
-  const [shouldDebugInsights, setShouldDebugInsights] =
-    useState(IS_DEVELOPMENT);
   const [shouldDebugRecipeOverlays, setShouldDebugRecipeOverlays] =
     useState(false);
 
@@ -143,7 +136,6 @@ export default function AppStateProvider({
     setUserEmailEager(getAuthEmailCookie());
     // Capture backup timezone on client
     setTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
-    if (IS_PRODUCTION) { warmRedisAction(); }
     const timeout = setTimeout(() => {
       setHasLoadedWithAnimations(true);
     }, 1000);
@@ -284,7 +276,6 @@ export default function AppStateProvider({
         setIsPhotoSetFull,
         // DEBUG
         areAdminDebugToolsEnabled,
-        isAdminAiModelDebugEnabled,
         isGridHighDensity,
         setIsGridHighDensity,
         areZoomControlsShown,
@@ -295,8 +286,6 @@ export default function AppStateProvider({
         setShouldDebugImageFallbacks,
         shouldShowBaselineGrid,
         setShouldShowBaselineGrid,
-        shouldDebugInsights,
-        setShouldDebugInsights,
         shouldDebugRecipeOverlays,
         setShouldDebugRecipeOverlays,
       }}

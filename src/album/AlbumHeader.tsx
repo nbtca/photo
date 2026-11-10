@@ -1,7 +1,6 @@
 import { Photo, PhotoDateRangePostgres } from '@/photo';
 import PhotoHeader from '@/photo/PhotoHeader';
 import {
-  AI_CONTENT_GENERATION_ENABLED,
   SHOW_CATEGORY_IMAGE_HOVERS,
 } from '@/app/config';
 import { getAppText } from '@/i18n/state/server';
@@ -88,7 +87,6 @@ export default async function AlbumHeader({
             />}
         </div>
         : undefined}
-      hasAiContentGeneration={AI_CONTENT_GENERATION_ENABLED}
       includeShareButton
     />
   );

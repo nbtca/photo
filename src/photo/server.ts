@@ -36,7 +36,6 @@ import { getCompatibleExifValue } from '@/utility/exif';
 import { fetchUrlWithByteLimit } from '@/utility/fetch';
 
 const IMAGE_WIDTH_BLUR = 200;
-const IMAGE_WIDTH_DEFAULT = 200;
 const IMAGE_QUALITY_DEFAULT = 80;
 
 // Buffers an image, refusing to exceed `maxBytes`, so that oversized
@@ -48,18 +47,15 @@ export const extractImageDataFromBlobPath = async (
   blobPath: string, {
     includeInitialPhotoFields,
     generateBlurData,
-    generateResizedImage,
     updateColorFields = true,
   }: {
     includeInitialPhotoFields?: boolean
     generateBlurData?: boolean
-    generateResizedImage?: boolean
     updateColorFields?: boolean
   } = {},
 ): Promise<{
   blobId?: string
   formDataFromExif?: Partial<PhotoFormData>
-  imageResizedBase64?: string
   shouldStripGpsData?: boolean
   fileBytes?: ArrayBuffer
   error?: string
@@ -76,7 +72,6 @@ export const extractImageDataFromBlobPath = async (
   let film: FujifilmSimulation | NikonPictureControl | undefined;
   let recipe: FujifilmRecipe | undefined;
   let blurData: string | undefined;
-  let imageResizedBase64: string | undefined;
   let shouldStripGpsData = false;
   let error: string | undefined;
 
@@ -122,10 +117,6 @@ export const extractImageDataFromBlobPath = async (
         blurData = await blurImage(fileBytes);
       }
 
-      if (generateResizedImage) {
-        imageResizedBase64 = await resizeImage(fileBytes);
-      }
-
       shouldStripGpsData = GEO_PRIVACY_ENABLED && (
         Boolean(getCompatibleExifValue('GPSLatitude', dataExif, dataExifr)) ||
         Boolean(getCompatibleExifValue('GPSLongitude', dataExif, dataExifr))
@@ -158,7 +149,6 @@ export const extractImageDataFromBlobPath = async (
   return {
     blobId,
     formDataFromExif,
-    imageResizedBase64,
     shouldStripGpsData,
     fileBytes,
     error,
@@ -175,41 +165,12 @@ const generateBase64 = async (
     .toBuffer()
     .then(data => `data:image/jpeg;base64,${data.toString('base64')}`);
 
-const resizeImage = async (
-  image: ArrayBuffer,
-  width = IMAGE_WIDTH_DEFAULT,
-) => 
-  generateBase64(image, sharp => sharp
-    .resize(width),
-  );
-
 const blurImage = async (image: ArrayBuffer) => 
   generateBase64(image, sharp => sharp
     .resize(IMAGE_WIDTH_BLUR)
     .modulate({ saturation: 1.15 })
     .blur(4),
   );
-
-export const getImageBase64FromUrl = async (url: string) => 
-  fetch(decodeURIComponent(url))
-    .then(res => res.arrayBuffer())
-    .then(buffer => generateBase64(buffer))
-    .catch(e => {
-      console.log(`Error getting image base64 from URL (${url})`, e);
-      return '';
-    });
-
-export const resizeImageFromUrl = async (
-  url: string,
-  width?: number,
-) => 
-  fetch(decodeURIComponent(url))
-    .then(res => res.arrayBuffer())
-    .then(buffer => resizeImage(buffer, width))
-    .catch(e => {
-      console.log(`Error resizing image from URL (${url})`, e);
-      return '';
-    });
 
 export const blurImageFromUrl = async (url: string) => 
   fetch(decodeURIComponent(url))

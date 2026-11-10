@@ -9,7 +9,6 @@ import {
 import PhotoForm from './form/PhotoForm';
 import { Tags } from '@/tag';
 import usePhotoFormParent from './form/usePhotoFormParent';
-import AiButton from './ai/AiButton';
 import { useMemo } from 'react';
 import { Recipes } from '@/recipe';
 import { Films } from '@/film';
@@ -26,8 +25,6 @@ export default function UploadPageClient({
   uniqueFilms,
   uniqueCameras,
   uniqueLenses,
-  hasAiContentGeneration,
-  imageThumbnailBase64,
   shouldStripGpsData,
 }: {
   blobId?: string
@@ -38,8 +35,6 @@ export default function UploadPageClient({
   uniqueFilms: Films
   uniqueCameras: Cameras
   uniqueLenses: Lenses
-  hasAiContentGeneration?: boolean
-  imageThumbnailBase64?: string
   shouldStripGpsData?: boolean
 }) {
   const {
@@ -47,13 +42,7 @@ export default function UploadPageClient({
     setIsPending,
     updatedTitle,
     setUpdatedTitle,
-    shouldConfirmAiTextGeneration,
-    setShouldConfirmAiTextGeneration,
-    aiContent,
-  } = usePhotoFormParent({
-    photoForm: formDataFromExif,
-    imageThumbnailBase64,
-  });
+  } = usePhotoFormParent();
 
   const initialPhotoForm = useMemo(() => ({
     ...formDataFromExif,
@@ -69,12 +58,6 @@ export default function UploadPageClient({
         ? updatedTitle
         : blobId}
       breadcrumbEllipsis
-      accessory={hasAiContentGeneration &&
-        <AiButton {...{
-          aiContent,
-          shouldConfirm: shouldConfirmAiTextGeneration,
-          tooltip: 'Generate AI text for all fields',
-        }} />}
       isLoading={pending}
     >
       <PhotoForm
@@ -85,11 +68,9 @@ export default function UploadPageClient({
         uniqueFilms={uniqueFilms}
         uniqueCameras={uniqueCameras}
         uniqueLenses={uniqueLenses}
-        aiContent={hasAiContentGeneration ? aiContent : undefined}
         shouldStripGpsData={shouldStripGpsData}
         onTitleChange={setUpdatedTitle}
         onFormStatusChange={setIsPending}
-        onFormDataChange={setShouldConfirmAiTextGeneration}
       />
     </AdminChildPage>
   );

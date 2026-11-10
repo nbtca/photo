@@ -28,7 +28,6 @@ export default function AdminPhotosTable({
   onLastPhotoVisible,
   revalidatePhoto,
   photoIdsSyncing = [],
-  hasAiContentGeneration,
   dateType = 'createdAt',
   canEdit = true,
   canSync,
@@ -42,7 +41,6 @@ export default function AdminPhotosTable({
   onLastPhotoVisible?: () => void
   revalidatePhoto?: RevalidatePhoto
   photoIdsSyncing?: string[]
-  hasAiContentGeneration: boolean
   dateType?: 'createdAt' | 'updatedAt'
   canEdit?: boolean
   canSync?: boolean

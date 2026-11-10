@@ -10,7 +10,6 @@ import {
   getPhoto,
   getPhotos,
   addTagsToPhotos,
-  getUniqueTags,
   deletePhotoRecipeGlobally,
   renamePhotoRecipeGlobally,
   getPhotosNeedingRecipeTitleCount,
@@ -47,14 +46,9 @@ import {
   pathForPhoto,
   pathForTag,
 } from '@/app/path';
-import { TAG_FAVS, Tags, isPhotoFav, isTagFavs } from '@/tag';
+import { TAG_FAVS, isPhotoFav, isTagFavs } from '@/tag';
 import { convertPhotoToPhotoDbInsert, Photo } from '.';
 import { runAuthenticatedAdminServerAction } from '@/auth/server';
-import { AiImageQuery, getAiImageQuery, getAiTextFieldsToGenerate } from './ai';
-import {
-  AI_TEXT_AUTO_GENERATED_FIELDS,
-  AI_CONTENT_GENERATION_ENABLED,
-} from '@/app/config';
 import { createStreamableValue } from '@ai-sdk/rsc';
 import { UrlAddStatus } from '@/admin/AdminUploadsClient';
 import { after } from 'next/server';
@@ -92,10 +86,6 @@ const propagateRecipeTitleIfNecessary = lazily(
   photoServer,
   'propagateRecipeTitleIfNecessary',
 );
-const openAi = () => import('@/platforms/openai');
-const streamOpenAiImageQuery = lazily(openAi, 'streamOpenAiImageQuery');
-const aiServer = () => import('./ai/server');
-const generateAiImageQueries = lazily(aiServer, 'generateAiImageQueries');
 const storageServer = () => import('./storage/server');
 const convertUploadToPhoto = lazily(storageServer, 'convertUploadToPhoto');
 const colorServer = () => import('@/photo/color/server');
@@ -107,7 +97,6 @@ const getColorFieldsForPhotoDbInsert = lazily(
   colorServer,
   'getColorFieldsForPhotoDbInsert',
 );
-const getColorFromAI = lazily(colorServer, 'getColorFromAI');
 const updateServer = () => import('./update/server');
 const shouldBackfillPhotoStorage = lazily(
   updateServer,
@@ -156,7 +145,6 @@ const addUpload = async ({
   excludeFromFeeds,
   takenAtLocal,
   takenAtNaiveLocal,
-  uniqueTags: _uniqueTags,
   onStreamUpdate,
   onFinish,
   shouldRevalidateAllKeysAndPaths,
@@ -170,7 +158,6 @@ const addUpload = async ({
   excludeFromFeeds?: string
   takenAtLocal: string
   takenAtNaiveLocal: string
-  uniqueTags?: Tags
   onStreamUpdate?: (
     statusMessage: string,
     status?: UrlAddStatus['status'],
@@ -180,51 +167,20 @@ const addUpload = async ({
 }) => {
   const {
     formDataFromExif,
-    imageResizedBase64,
     shouldStripGpsData,
     fileBytes,
   } = await extractImageDataFromBlobPath(url, {
     includeInitialPhotoFields: true,
-    generateResizedImage: AI_CONTENT_GENERATION_ENABLED,
   });
 
   if (formDataFromExif) {
-    if (AI_CONTENT_GENERATION_ENABLED) {
-      onStreamUpdate?.('Generating AI text');
-    }
-
-    const title = _title || formDataFromExif.title;
-    const caption = formDataFromExif.caption;
-    const tags = _tags || formDataFromExif.tags;
-
-    const uniqueTags = _uniqueTags || await getUniqueTags();
-
-    const {
-      title: aiTitle,
-      caption: aiCaption,
-      tags: aiTags,
-      semantic,
-    } = await generateAiImageQueries({
-      imageBase64: imageResizedBase64,
-      textFieldsToGenerate: getAiTextFieldsToGenerate(
-        AI_TEXT_AUTO_GENERATED_FIELDS,
-        Boolean(title),
-        Boolean(caption),
-        Boolean(tags),
-      ),
-      existingTitle: title,
-      uniqueTags,
-    });
-
     const form: Partial<PhotoFormData> = {
       ...formDataFromExif,
-      title: title || aiTitle,
-      caption: caption || aiCaption,
-      tags: tags || aiTags,
+      title: _title || formDataFromExif.title,
+      tags: _tags || formDataFromExif.tags,
       excludeFromFeeds,
       hidden,
       favorite,
-      semanticDescription: semantic,
       takenAt: formDataFromExif.takenAt || takenAtLocal,
       takenAtNaive: formDataFromExif.takenAtNaive || takenAtNaiveLocal,
     };
@@ -280,7 +236,7 @@ export const addUploadsAction = async ({
   albumTitles?: string[]
 }) =>
   runAuthenticatedAdminServerAction(async () => {
-    const PROGRESS_TASK_COUNT = AI_CONTENT_GENERATION_ENABLED ? 5 : 4;
+    const PROGRESS_TASK_COUNT = 4;
 
     const addedUploadUrls: string[] = [];
     let currentUploadUrl = '';
@@ -298,8 +254,6 @@ export const addUploadsAction = async ({
         statusMessage,
         progress: ++progress / PROGRESS_TASK_COUNT,
       });
-
-    const uniqueTags = await getUniqueTags();
 
     const albumIds = albumTitles
       ? await createAlbumsAndGetIds(albumTitles)
@@ -323,7 +277,6 @@ export const addUploadsAction = async ({
             excludeFromFeeds,
             takenAtLocal,
             takenAtNaiveLocal,
-            uniqueTags,
             onStreamUpdate: streamUpdate,
             onFinish: () => {
               addedUploadUrls.push(url);
@@ -483,11 +436,6 @@ export const getRecipeDataForTitleAction = async (recipeTitle: string) =>
     await getRecipeDataForTitle(recipeTitle),
   );
 
-export const getAiColorAction = async (url: string) =>
-  runAuthenticatedAdminServerAction(async () =>
-    await getColorFromAI(url),
-  );
-
 export const storeColorDataForPhotoAction = async (
   photoId: string,
   { force }: { force?: boolean } = {},
@@ -564,19 +512,6 @@ export const deleteUploadsAction = async (urls: string[]) =>
 
 export const clearCacheAction = async () =>
   runAuthenticatedAdminServerAction(revalidateAllKeysAndPaths);
-
-export const streamAiImageQueryAction = async (
-  imageBase64: string,
-  query: AiImageQuery,
-  existingTitle?: string,
-) =>
-  runAuthenticatedAdminServerAction(async () => {
-    const existingTags = await getUniqueTags();
-    return streamOpenAiImageQuery(
-      imageBase64,
-      getAiImageQuery(query, existingTitle, existingTags),
-    );
-  });
 
 export const getImageBlurAction = async (url: string) =>
   runAuthenticatedAdminServerAction(() => blurImageFromUrl(url));
