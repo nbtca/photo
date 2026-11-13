@@ -24,6 +24,7 @@ import { PATH_ADMIN_UPLOADS, pathForAdminUploadUrl } from '@/app/path';
 import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { uploadTempPhotoFromClient } from '@/photo/storage';
 import { findUploadedHashes } from '@/platforms/storage';
+import { folderOf } from './files';
 import { MAX_PHOTO_UPLOAD_SIZE_IN_BYTES } from '@/photo';
 import { MAX_UPLOAD_BYTES } from '@/photo/limits';
 import { MAX_IMAGE_SIZE } from '@/platforms/next-image';
@@ -185,6 +186,11 @@ export default function UploadStateProvider({
             session.urls.push(await uploadTempPhotoFromClient(blob, extension, {
               abortSignal: signal,
               sha256: session.hashes[index],
+              origin: {
+                name: file.name,
+                folder: folderOf(file),
+                modifiedAt: file.lastModified,
+              },
               onProgress: loaded => reportProgress(index, loaded),
             }));
           } catch (error) {

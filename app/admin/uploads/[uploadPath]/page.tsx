@@ -16,6 +16,9 @@ import ErrorNote from '@/components/ErrorNote';
 import { getRecipeTitleForData } from '@/photo/query';
 import { getAlbumsWithMeta } from '@/album/query';
 import AppGrid from '@/components/AppGrid';
+import { getStorageUrlsForPrefix } from '@/platforms/storage';
+import { suggestTitle } from '@/admin/upload';
+import { generateLocalTakenAt } from '@/utility/date';
 
 export const maxDuration = 60;
 
@@ -39,7 +42,9 @@ export default async function UploadPage({ params, searchParams }: Params) {
       formDataFromExif,
       shouldStripGpsData,
       error,
-    }] = await Promise.all([
+    },
+    [upload],
+  ] = await Promise.all([
     getAlbumsWithMeta(),
     getUniqueRecipesCached(),
     getUniqueFilmsCached(),
@@ -50,6 +55,9 @@ export default async function UploadPage({ params, searchParams }: Params) {
       includeInitialPhotoFields: true,
       generateBlurData: BLUR_ENABLED,
     }),
+    getStorageUrlsForPrefix(
+      decodeURIComponent(uploadPath).split('/').pop(),
+    ).catch(() => []),
   ]);
 
   const isDataMissing = !formDataFromExif;
@@ -70,8 +78,14 @@ export default async function UploadPage({ params, searchParams }: Params) {
     if (recipeTitle) {
       formDataFromExif.recipeTitle = recipeTitle;
     }
-    if (typeof title === 'string') {
-      formDataFromExif.title = title;
+    formDataFromExif.title = typeof title === 'string'
+      ? title
+      : formDataFromExif.title || suggestTitle(upload?.originalName);
+    if (!formDataFromExif.takenAt && upload?.modifiedAt) {
+      const { takenAtLocal, takenAtNaiveLocal } =
+        generateLocalTakenAt(upload.modifiedAt);
+      formDataFromExif.takenAt = takenAtLocal;
+      formDataFromExif.takenAtNaive = takenAtNaiveLocal;
     }
   }
 
@@ -87,6 +101,7 @@ export default async function UploadPage({ params, searchParams }: Params) {
         uniqueCameras,
         uniqueLenses,
         shouldStripGpsData,
+        albumTitles: upload?.folder ? [upload.folder] : undefined,
       }} />
       : <AppGrid contentMain={
         <ErrorNote>

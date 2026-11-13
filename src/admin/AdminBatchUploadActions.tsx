@@ -6,10 +6,6 @@ import Container from '@/components/Container';
 import { addUploadsAction } from '@/photo/actions';
 import { PATH_ADMIN_PHOTOS } from '@/app/path';
 import { Tags } from '@/tag';
-import {
-  generateLocalNaivePostgresString,
-  generateLocalPostgresString,
-} from '@/utility/date';
 import sleep from '@/utility/sleep';
 import { readStreamableValue } from '@ai-sdk/rsc';
 import { useRouter } from 'next/navigation';
@@ -20,7 +16,7 @@ import { UrlAddStatus } from './AdminUploadsClient';
 import FieldsetTag from '../tag/FieldsetTag';
 import DeleteUploadButton from './DeleteUploadButton';
 import { useAppState } from '@/app/AppState';
-import { pluralize } from '@/utility/string';
+import { useAppText } from '@/i18n/state/client';
 import FieldsetFavs from '@/photo/form/FieldsetFavs';
 import IconAddUpload from '@/components/icons/IconAddUpload';
 import { PhotoFormData } from '@/photo/form';
@@ -33,6 +29,8 @@ const UPLOAD_BATCH_SIZE = 2;
 export default function AdminBatchUploadActions({
   uploadUrls,
   uploadTitles,
+  uploadTakenAts,
+  suggestedAlbum,
   uniqueAlbums,
   uniqueTags,
   isAdding,
@@ -44,6 +42,8 @@ export default function AdminBatchUploadActions({
 }: {
   uploadUrls: string[]
   uploadTitles: string[]
+  uploadTakenAts: { takenAtLocal: string, takenAtNaiveLocal: string }[]
+  suggestedAlbum: string
   uniqueAlbums: Albums
   uniqueTags?: Tags
   isAdding: boolean
@@ -55,12 +55,14 @@ export default function AdminBatchUploadActions({
 }) {
   const { updateAdminData } = useAppState();
 
-  const [showBulkSettings, setShowBulkSettings] = useState(false);
+  const appText = useAppText();
+
+  const [showMoreOptions, setShowMoreOptions] = useState(false);
   const [tagErrorMessage, setTagErrorMessage] = useState('');
   const [formData, setFormData] = useState<Partial<PhotoFormData>>({});
-  const [albumTitles, setAlbumTitles] = useState<string>();
+  const [albumTitles, setAlbumTitles] = useState(suggestedAlbum);
 
-  const [buttonText, setButtonText] = useState('Add All Uploads');
+  const [buttonText, setButtonText] = useState<string>();
   const [actionErrorMessage, setActionErrorMessage] = useState('');
   const [addingProgress, setAddingProgress] = useState<number>();
   const [isAddingComplete, setIsAddingComplete] = useState(false);
@@ -71,6 +73,7 @@ export default function AdminBatchUploadActions({
   const addUploadUrls = async (
     urls: string[],
     titles: string[],
+    takenAts: typeof uploadTakenAts,
     isFinalBatch: boolean,
   ) => {
     const { tags, favorite, excludeFromFeeds, hidden } = formData;
@@ -78,21 +81,17 @@ export default function AdminBatchUploadActions({
       const stream = await addUploadsAction({
         uploadUrls: urls,
         uploadTitles: titles,
-        ...showBulkSettings && {
-          albumTitles: albumTitles?.split(','),
-          tags,
-          favorite,
-          excludeFromFeeds,
-          hidden,
-        },
-        takenAtLocal: generateLocalPostgresString(),
-        takenAtNaiveLocal: generateLocalNaivePostgresString(),
+        uploadTakenAts: takenAts,
+        albumTitles: albumTitles.split(',').filter(Boolean),
+        tags,
+        ...showMoreOptions && { favorite, excludeFromFeeds, hidden },
         shouldRevalidateAllKeysAndPaths: isFinalBatch,
       });
       for await (const data of readStreamableValue(stream)) {
-        setButtonText(
-          `Adding ${addedUploadCount.current + 1} of ${uploadUrls.length}`,
-        );
+        setButtonText(appText.admin.uploadsAdding(
+          addedUploadCount.current + 1,
+          uploadUrls.length,
+        ));
         setUrlAddStatuses(current => {
           const update = current.map(status =>
             status.url === data?.url
@@ -124,7 +123,7 @@ export default function AdminBatchUploadActions({
       }
     } catch (e: any) {
       setIsAdding(false);
-      setButtonText('Try Again');
+      setButtonText(appText.admin.uploadsRetry);
       setAddingProgress(undefined);
       setActionErrorMessage(e);
     }
@@ -138,29 +137,28 @@ export default function AdminBatchUploadActions({
         <div className="w-full space-y-4">
           <div className="flex">
             <div className="grow text-main">
-              {showBulkSettings
-                ? `Apply to ${pluralize(uploadUrls.length, 'upload')}`
-                : `Found ${pluralize(uploadUrls.length, 'upload')}`}
+              {appText.admin.uploadsPending(uploadUrls.length)}
             </div>
             <FieldsetWithStatus
-              label="Apply to All"
+              label={appText.admin.uploadsMoreOptions}
               type="checkbox"
-              value={showBulkSettings ? 'true' : 'false'}
-              onChange={value => setShowBulkSettings(value === 'true')}
+              value={showMoreOptions ? 'true' : 'false'}
+              onChange={value => setShowMoreOptions(value === 'true')}
               readOnly={isAdding}
             />
           </div>
-          {showBulkSettings && !actionErrorMessage &&
+          {!actionErrorMessage &&
             <div className="space-y-4 mb-6">
               <FieldsetAlbum
+                label={appText.category.albumPlural}
                 albumOptions={uniqueAlbums}
-                value={albumTitles ?? ''}
+                value={albumTitles}
                 onChange={albums => setAlbumTitles(albums)}
                 readOnly={isAdding}
                 className="relative z-11"
               />
               <FieldsetTag
-                label="Tags"
+                label={appText.category.tagPlural}
                 tags={formData.tags ?? ''}
                 tagOptions={uniqueTags}
                 onChange={tags => setFormData(data => ({ ...data, tags }))}
@@ -168,18 +166,24 @@ export default function AdminBatchUploadActions({
                 readOnly={isAdding}
                 className="relative z-10"
               />
-              <FieldsetVisibility
-                formData={formData}
-                setFormData={setFormData}
-                readOnly={isAdding}
-              />
-              <FieldsetFavs
-                className="pt-2.5 pb-2"
-                value={formData.favorite ?? 'false'}
-                onChange={favorite =>
-                  setFormData(data => ({ ...data, favorite }))}
-                readOnly={isAdding}
-              />
+              {showMoreOptions && <>
+                <FieldsetVisibility
+                  formData={formData}
+                  setFormData={setFormData}
+                  readOnly={isAdding}
+                />
+                <FieldsetFavs
+                  className="pt-2.5 pb-2"
+                  value={formData.favorite ?? 'false'}
+                  onChange={favorite =>
+                    setFormData(data => ({ ...data, favorite }))}
+                  readOnly={isAdding}
+                />
+              </>}
+              {!albumTitles && !isAdding && !isAddingComplete &&
+                <div className="text-dim">
+                  {appText.admin.uploadsNoAlbum}
+                </div>}
             </div>}
           <div className="flex flex-col sm:flex-row-reverse gap-2">
             <ProgressButton
@@ -197,45 +201,44 @@ export default function AdminBatchUploadActions({
                 : <IconAddUpload />
               }
               onClick={async () => {
-                // eslint-disable-next-line @stylistic/max-len
-                if (confirm(`Are you sure you want to add all ${uploadUrls.length} uploads?`)) {
-                  setIsAdding(true);
-                  setUrlAddStatuses(current => current.map((url, index) => ({
-                    ...url,
-                    status: index === 0 ? 'adding' : 'waiting',
-                  })));
-                  const uploadsToAdd = uploadUrls.slice();
-                  const titlesToAdd = uploadTitles.slice();
-                  try {
-                    while (uploadsToAdd.length > 0) {
-                      const nextBatch = uploadsToAdd
-                        .splice(0, UPLOAD_BATCH_SIZE);
-                      const nextTitles = titlesToAdd
-                        .splice(0, UPLOAD_BATCH_SIZE);
-                      await addUploadUrls(
-                        nextBatch,
-                        nextTitles,
-                        uploadsToAdd.length === 0,
-                      );
-                    }
-                    setButtonText('Complete');
-                    setAddingProgress(1);
-                    setIsAdding(false);
-                    setIsAddingComplete(true);
-                    await onBatchActionComplete?.();
-                    await sleep(1000).then(() =>
-                      router.push(PATH_ADMIN_PHOTOS));
-                  } catch (e: any) {
-                    setAddingProgress(undefined);
-                    setIsAdding(false);
-                    setButtonText('Try Again');
-                    setActionErrorMessage(e);
+                setIsAdding(true);
+                setUrlAddStatuses(current => current.map((url, index) => ({
+                  ...url,
+                  status: index === 0 ? 'adding' : 'waiting',
+                })));
+                const uploadsToAdd = uploadUrls.slice();
+                const titlesToAdd = uploadTitles.slice();
+                const takenAtsToAdd = uploadTakenAts.slice();
+                try {
+                  while (uploadsToAdd.length > 0) {
+                    const nextBatch = uploadsToAdd
+                      .splice(0, UPLOAD_BATCH_SIZE);
+                    const nextTitles = titlesToAdd
+                      .splice(0, UPLOAD_BATCH_SIZE);
+                    await addUploadUrls(
+                      nextBatch,
+                      nextTitles,
+                      takenAtsToAdd.splice(0, UPLOAD_BATCH_SIZE),
+                      uploadsToAdd.length === 0,
+                    );
                   }
+                  setButtonText(appText.admin.uploadsAdded);
+                  setAddingProgress(1);
+                  setIsAdding(false);
+                  setIsAddingComplete(true);
+                  await onBatchActionComplete?.();
+                  await sleep(1000).then(() =>
+                    router.push(PATH_ADMIN_PHOTOS));
+                } catch (e: any) {
+                  setAddingProgress(undefined);
+                  setIsAdding(false);
+                  setButtonText(appText.admin.uploadsRetry);
+                  setActionErrorMessage(e);
                 }
               }}
               hideText="never"
             >
-              {buttonText}
+              {buttonText ?? appText.admin.uploadsAddAll(uploadUrls.length)}
             </ProgressButton>
             <DeleteUploadButton
               urls={uploadUrls}
@@ -252,7 +255,7 @@ export default function AdminBatchUploadActions({
               hideText="never"
               disabled={isAdding}
             >
-              Delete All Uploads
+              {appText.admin.uploadsDeleteAll}
             </DeleteUploadButton>
           </div>
         </div>

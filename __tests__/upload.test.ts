@@ -3,6 +3,8 @@ import {
   getUploadProgress,
   partitionUploadFiles,
   skipReasonFor,
+  suggestAlbum,
+  suggestTitle,
   uploadExtensionFor,
 } from '@/admin/upload';
 
@@ -72,5 +74,50 @@ describe('uploadExtensionFor', () => {
     expect(uploadExtensionFor(file('image.png', ''))).toBe('png');
     expect(uploadExtensionFor(file('image', 'image/png'))).toBe('png');
     expect(uploadExtensionFor(file('a.JPEG', 'image/jpeg'))).toBe('jpg');
+  });
+});
+
+describe('suggestTitle', () => {
+  it('keeps names a person chose', () => {
+    expect(suggestTitle('2026 招新合影.jpg')).toBe('2026 招新合影');
+    expect(suggestTitle('维修日_现场.jpeg')).toBe('维修日 现场');
+    expect(suggestTitle('Sunset over campus.PNG')).toBe('Sunset over campus');
+  });
+  it('drops camera and app defaults', () => {
+    for (const name of [
+      'IMG_1234.JPG',
+      'IMG-20261018-WA0001.jpg',
+      'DSC01234.JPG',
+      '_DSC1234.jpg',
+      'DSCF1234.JPG',
+      '_MG_1234.JPG',
+      'PXL_20261018_143522123.jpg',
+      'P1010001.JPG',
+      'DJI_0001.JPG',
+      'mmexport1697612345678.jpg',
+      '微信图片_20261018143522.jpg',
+      '截屏2026-10-18 14.35.22.png',
+      'Screenshot 2026-10-18 at 14.35.22.png',
+      'image.png',
+      '20261018_143522.jpg',
+      '',
+    ]) {
+      expect(suggestTitle(name)).toBe('');
+    }
+  });
+});
+
+describe('suggestAlbum', () => {
+  it('uses the folder when every upload shares it', () => {
+    expect(suggestAlbum([
+      { folder: '2026-10-18 维修日' },
+      { folder: '2026-10-18 维修日' },
+    ])).toBe('2026-10-18 维修日');
+  });
+  it('suggests nothing for mixed or missing folders', () => {
+    expect(suggestAlbum([{ folder: 'a' }, { folder: 'b' }])).toBe('');
+    expect(suggestAlbum([{ folder: 'a' }, {}])).toBe('');
+    expect(suggestAlbum([{}, {}])).toBe('');
+    expect(suggestAlbum([])).toBe('');
   });
 });

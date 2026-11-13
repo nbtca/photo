@@ -14,13 +14,14 @@ import AddUploadButton from './AddUploadButton';
 import { getFileNamePartsFromStorageUrl } from '@/platforms/storage';
 import { useRouter } from 'next/navigation';
 import { useAppState } from '@/app/AppState';
+import { useAppText } from '@/i18n/state/client';
 
 export default function AdminUploadsTableRow({
   url,
   status,
-  statusMessage,
   draftTitle = '',
   uploadedAt,
+  modifiedAt,
   size,
   tabIndex,
   shouldRedirectAfterAdd,
@@ -45,6 +46,8 @@ export default function AdminUploadsTableRow({
   const router = useRouter();
 
   const { updateAdminData } = useAppState();
+
+  const appText = useAppText();
 
   const {
     fileExtension,
@@ -121,7 +124,7 @@ export default function AdminUploadsTableRow({
               value={draftTitle}
               onChange={titleUpdated =>
                 updateStatus({ draftTitle: titleUpdated })}
-              placeholder="Title (optional)"
+              placeholder={appText.admin.uploadTitlePlaceholder}
               tabIndex={tabIndex}
               readOnly={isRowLoading}
               capitalize
@@ -142,10 +145,8 @@ export default function AdminUploadsTableRow({
                   <AddUploadButton
                     url={url}
                     title={draftTitle}
-                    onAddStart={() => updateStatus({
-                      status: 'adding',
-                      statusMessage: 'Adding ...',
-                    })}
+                    takenAtFallback={modifiedAt}
+                    onAddStart={() => updateStatus({ status: 'adding' })}
                     onAddFinish={removeRow}
                     shouldRedirectToAdminPhotos={shouldRedirectAfterAdd}
                     disabled={isRowLoading}
@@ -154,7 +155,7 @@ export default function AdminUploadsTableRow({
                   <EditButton
                     path={pathForAdminUploadUrl(url, draftTitle)}
                     disabled={isRowLoading}
-                    tooltip="Review EXIF details before adding"
+                    tooltip={appText.admin.uploadEditTooltip}
                     hideText="always"
                     tooltipSide="bottom"
                   />
@@ -170,7 +171,7 @@ export default function AdminUploadsTableRow({
                       }
                     }}
                     disabled={isRowLoading}
-                    tooltip="Delete upload"
+                    tooltip={appText.admin.uploadDelete}
                     tooltipSide="bottom"
                   />
                 </>}
@@ -182,15 +183,15 @@ export default function AdminUploadsTableRow({
           )}>
             {isAdding || isComplete
               ? status === 'added'
-                ? 'Added'
+                ? appText.admin.uploadAdded
                 : status === 'adding'
-                  ? statusMessage ?? 'Adding ...'
-                  : 'Waiting'
+                  ? appText.admin.uploadAdding
+                  : appText.admin.uploadWaiting
               : <>
                 {uploadedAt
                   ? <ResponsiveDate
                     date={uploadedAt}
-                    titleLabel="UPLOADED AT"
+                    titleLabel={appText.sort.uploadedAt}
                   />
                   : '—'}
                 <div className="max-sm:hidden text-dim truncate">

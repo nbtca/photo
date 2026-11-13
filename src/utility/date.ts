@@ -132,11 +132,16 @@ export const convertTimestampToNaivePostgresString = (
 
 // Run in browser to generate local date time strings
 
-export const generateLocalPostgresString = () =>
-  formatDateForPostgres(new Date());
+export const generateLocalPostgresString = (date = new Date()) =>
+  formatDateForPostgres(date);
 
-export const generateLocalNaivePostgresString = () =>
-  format(new Date(), DATE_FORMAT_POSTGRES);
+export const generateLocalNaivePostgresString = (date = new Date()) =>
+  format(date, DATE_FORMAT_POSTGRES);
+
+export const generateLocalTakenAt = (date?: Date) => ({
+  takenAtLocal: generateLocalPostgresString(date),
+  takenAtNaiveLocal: generateLocalNaivePostgresString(date),
+});
 
 // Form validation to prevent Postgres runtime errors
 

@@ -42,8 +42,8 @@ export default function FieldsetTag(props: {
   return (
     <div ref={ref}>
       <FieldsetWithStatus
-        {...rest}
         label="Tags"
+        {...rest}
         value={tags}
         tagOptions={convertTagsForForm(tagOptions, appText)}
         onChange={tags => {

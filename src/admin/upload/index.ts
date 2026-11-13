@@ -73,3 +73,22 @@ export const countSkipReasons = (reasons: SkipReason[]) =>
       count: reasons.filter(r => r === reason).length,
     }))
     .filter(({ count }) => count > 0);
+
+const DEFAULT_FILE_NAME = new RegExp(`^(?:${[
+  '_?dsc[fn]?', '_?mg_', 'img', 'pxl', 'mvimg', 'vid', 'dji', 'gopr', 'p\\d',
+  'mmexport', 'wx_camera', '微信图片', '截屏', '屏幕截图', 'screen ?shot',
+  'image', 'photo',
+].join('|')})`, 'i');
+
+export const suggestTitle = (fileName = '') => {
+  const name = fileName.replace(/\.[^.]+$/, '').trim();
+  return DEFAULT_FILE_NAME.test(name) || !/\p{L}/u.test(name)
+    ? ''
+    : name.replace(/_+/g, ' ').trim();
+};
+
+export const suggestAlbum = (uploads: { folder?: string }[]) => {
+  const folders = new Set(uploads.map(({ folder }) => folder));
+  const [folder] = folders;
+  return folders.size === 1 && folder ? folder : '';
+};

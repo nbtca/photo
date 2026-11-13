@@ -390,16 +390,26 @@ export const mutations: Record<string, Handler> = {
   },
 
   async getStorageUrlsForPrefix(env, session, prefix = '') {
-    const rows = await all<{ name: string; bytes: number; created_at: string }>(
+    const rows = await all<{
+      name: string
+      bytes: number
+      created_at: string
+      original_name: string | null
+      folder: string | null
+      modified_at: string | null
+    }>(
       env,
-      'SELECT name, bytes, created_at FROM files WHERE name >= ? AND name < ? AND (? OR owner_sub = ?) ORDER BY created_at DESC LIMIT 1000',
+      'SELECT name, bytes, created_at, original_name, folder, modified_at FROM files WHERE name >= ? AND name < ? AND (? OR owner_sub = ?) ORDER BY created_at DESC LIMIT 1000',
       [String(prefix), `${String(prefix)}\u{10ffff}`, session.admin ? 1 : 0, session.sub],
     );
-    return rows.map(({ name, bytes, created_at }) => ({
+    return rows.map(({ name, bytes, created_at, original_name, folder, modified_at }) => ({
       url: `/img/${name}`,
       fileName: name,
       uploadedAt: created_at,
       bytes,
+      originalName: original_name,
+      folder,
+      modifiedAt: modified_at,
     }));
   },
 };
