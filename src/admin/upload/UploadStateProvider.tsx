@@ -23,6 +23,7 @@ import { revalidateAdminAfterUploadAction } from '@/admin/actions';
 import { PATH_ADMIN_UPLOADS, pathForAdminUploadUrl } from '@/app/path';
 import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { uploadTempPhotoFromClient } from '@/photo/storage';
+import { findUploadedHashes } from '@/platforms/storage';
 import { MAX_PHOTO_UPLOAD_SIZE_IN_BYTES } from '@/photo';
 import { MAX_UPLOAD_BYTES } from '@/photo/limits';
 import { MAX_IMAGE_SIZE } from '@/platforms/next-image';
@@ -30,6 +31,23 @@ import { isAbortError } from '@/utility/abort';
 import { useAppText } from '@/i18n/state/client';
 import { toastWarning } from '@/toast';
 import { Unauthorized } from '@spa/data';
+
+interface UploadSession {
+  controller: AbortController
+  queue: File[]
+  hashes: string[]
+  sizes: number[]
+  seen: Set<string>
+  skipped: SkipReason[]
+  urls: string[]
+  next: number
+  pending: number
+  isRunning: boolean
+}
+
+const sha256Of = async (file: Blob) => new Uint8Array(
+  await crypto.subtle.digest('SHA-256', await file.arrayBuffer()),
+).toHex();
 
 const Lines = ({ lines }: { lines: string[] }) =>
   lines.map(line => <div key={line}>{line}</div>);
@@ -59,7 +77,7 @@ export default function UploadStateProvider({
   const appText = useAppText();
 
   const uploadInputRef = useRef<HTMLInputElement>(null);
-  const uploadAbortRef = useRef<AbortController | null>(null);
+  const sessionRef = useRef<UploadSession | null>(null);
   const [uploadState, _setUploadState] = useState(INITIAL_UPLOAD_STATE);
   const [hideUploadPanel, setHideUploadPanel] = useState(false);
 
@@ -82,8 +100,8 @@ export default function UploadStateProvider({
     _setUploadState(INITIAL_UPLOAD_STATE);
   }, []);
   const cancelUpload = useCallback(() => {
-    uploadAbortRef.current?.abort();
-    uploadAbortRef.current = null;
+    sessionRef.current?.controller.abort();
+    sessionRef.current = null;
     _setUploadState(INITIAL_UPLOAD_STATE);
   }, []);
 
@@ -113,82 +131,19 @@ export default function UploadStateProvider({
       .map(({ reason, count }) => appText.admin.uploadSkipped(reason, count))
   , [appText]);
 
-  const uploadFiles = useCallback(async (files: File[]) => {
-    if (uploadAbortRef.current) {
-      toastWarning(appText.admin.dropBusy);
-      return;
-    }
-
-    const { accepted, skipped } = partitionUploadFiles(
-      files,
-      PRESERVE_ORIGINAL_UPLOADS
-        ? MAX_UPLOAD_BYTES
-        : MAX_PHOTO_UPLOAD_SIZE_IN_BYTES,
-    );
-    if (accepted.length === 0) {
-      if (skipped.length > 0) {
-        toastWarning(<Lines lines={describeSkipped(skipped)} />);
+  const finishSession = useCallback(async (session: UploadSession) => {
+    sessionRef.current = null;
+    const skippedLines = describeSkipped(session.skipped);
+    if (session.urls.length === 0) {
+      if (session.skipped.every(reason => reason !== 'failed')) {
+        resetUploadState();
+        toastWarning(<Lines lines={skippedLines} />);
+      } else {
+        setUploadState({
+          isUploading: false,
+          uploadError: skippedLines.join(' · '),
+        });
       }
-      return;
-    }
-
-    const controller = new AbortController();
-    uploadAbortRef.current = controller;
-    const abortSignal = controller.signal;
-
-    const fileSizes = accepted.map(file => file.size);
-    const reportProgress = (fileIndex: number, bytesLoaded: number) =>
-      setUploadState({
-        uploadProgress: getUploadProgress(fileSizes, fileIndex, bytesLoaded),
-      });
-    setUploadState({
-      isUploading: true,
-      uploadError: '',
-      uploadProgress: 0,
-      filesLength: accepted.length,
-    });
-
-    const urls: string[] = [];
-    try {
-      for (const [index, file] of accepted.entries()) {
-        setUploadState({ fileUploadIndex: index, fileUploadName: file.name });
-        reportProgress(index, 0);
-        const { blob, extension } = await prepareUpload(file);
-        if (abortSignal.aborted) { return; }
-        fileSizes[index] = blob.size;
-        if (blob.size > MAX_UPLOAD_BYTES) {
-          skipped.push('size');
-        } else {
-          try {
-            urls.push(await uploadTempPhotoFromClient(blob, extension, {
-              abortSignal,
-              onProgress: loaded => reportProgress(index, loaded),
-            }));
-          } catch (error) {
-            if (isAbortError(error) || error instanceof Unauthorized) {
-              throw error;
-            }
-            console.error(error);
-            skipped.push('failed');
-          }
-        }
-        reportProgress(index, fileSizes[index]);
-      }
-    } catch (error) {
-      if (isAbortError(error) || error instanceof Unauthorized) { return; }
-      throw error;
-    } finally {
-      if (uploadAbortRef.current === controller) {
-        uploadAbortRef.current = null;
-      }
-    }
-
-    const skippedLines = describeSkipped(skipped);
-    if (urls.length === 0) {
-      setUploadState({
-        isUploading: false,
-        uploadError: skippedLines.join(' · '),
-      });
       return;
     }
     if (skippedLines.length > 0) {
@@ -201,11 +156,134 @@ export default function UploadStateProvider({
       setUploadState({ isUploading: false });
       router.refresh();
     } else {
-      startUploadTransition(() => accepted.length > 1
+      startUploadTransition(() => session.queue.length > 1
         ? router.push(PATH_ADMIN_UPLOADS)
-        : router.push(pathForAdminUploadUrl(urls[0])));
+        : router.push(pathForAdminUploadUrl(session.urls[0])));
     }
-  }, [appText, describeSkipped, pathname, router, setUploadState]);
+  }, [describeSkipped, pathname, resetUploadState, router, setUploadState]);
+
+  const runSession = useCallback(async (session: UploadSession) => {
+    const { signal } = session.controller;
+    const reportProgress = (index: number, bytesLoaded: number) =>
+      setUploadState({
+        uploadProgress: getUploadProgress(session.sizes, index, bytesLoaded),
+      });
+    session.isRunning = true;
+    try {
+      for (; session.next < session.queue.length; session.next++) {
+        const index = session.next;
+        const file = session.queue[index];
+        setUploadState({ fileUploadIndex: index, fileUploadName: file.name });
+        reportProgress(index, 0);
+        const { blob, extension } = await prepareUpload(file);
+        if (signal.aborted) { return; }
+        session.sizes[index] = blob.size;
+        if (blob.size > MAX_UPLOAD_BYTES) {
+          session.skipped.push('size');
+        } else {
+          try {
+            session.urls.push(await uploadTempPhotoFromClient(blob, extension, {
+              abortSignal: signal,
+              sha256: session.hashes[index],
+              onProgress: loaded => reportProgress(index, loaded),
+            }));
+          } catch (error) {
+            if (isAbortError(error) || error instanceof Unauthorized) {
+              throw error;
+            }
+            console.error(error);
+            session.skipped.push('failed');
+          }
+        }
+        reportProgress(index, session.sizes[index]);
+      }
+    } catch (error) {
+      if (isAbortError(error) || error instanceof Unauthorized) { return; }
+      console.error(error);
+      sessionRef.current = null;
+      setUploadState({ isUploading: false, uploadError: String(error) });
+      return;
+    } finally {
+      session.isRunning = false;
+    }
+    if (session.pending === 0) { await finishSession(session); }
+  }, [finishSession, setUploadState]);
+
+  const uploadFiles = useCallback(async (files: File[]) => {
+    const { accepted, skipped } = partitionUploadFiles(
+      files,
+      PRESERVE_ORIGINAL_UPLOADS
+        ? MAX_UPLOAD_BYTES
+        : MAX_PHOTO_UPLOAD_SIZE_IN_BYTES,
+    );
+    if (!sessionRef.current && accepted.length === 0) {
+      if (skipped.length > 0) {
+        toastWarning(<Lines lines={describeSkipped(skipped)} />);
+      }
+      return;
+    }
+
+    let session = sessionRef.current;
+    if (!session) {
+      session = {
+        controller: new AbortController(),
+        queue: [],
+        hashes: [],
+        sizes: [],
+        seen: new Set(),
+        skipped: [],
+        urls: [],
+        next: 0,
+        pending: 0,
+        isRunning: false,
+      };
+      sessionRef.current = session;
+      setUploadState({
+        isUploading: true,
+        uploadError: '',
+        uploadProgress: 0,
+        fileUploadIndex: 0,
+        fileUploadName: '',
+        filesLength: 0,
+      });
+    }
+    session.skipped.push(...skipped);
+
+    session.pending++;
+    try {
+      const hashes: string[] = [];
+      for (const file of accepted) {
+        hashes.push(await sha256Of(file).catch(() => ''));
+      }
+      const known = hashes.filter(Boolean);
+      const uploaded = new Set(known.length > 0
+        ? await findUploadedHashes(known).catch(error => {
+          if (error instanceof Unauthorized) { throw error; }
+          console.error(error);
+          return [];
+        })
+        : []);
+      if (session !== sessionRef.current) { return; }
+      accepted.forEach((file, index) => {
+        const hash = hashes[index];
+        if (hash && (uploaded.has(hash) || session.seen.has(hash))) {
+          session.skipped.push('duplicate');
+          return;
+        }
+        if (hash) { session.seen.add(hash); }
+        session.queue.push(file);
+        session.hashes.push(hash);
+        session.sizes.push(file.size);
+      });
+      setUploadState({ filesLength: session.queue.length });
+    } catch (error) {
+      if (error instanceof Unauthorized) { return; }
+      throw error;
+    } finally {
+      session.pending--;
+    }
+    if (!session.isRunning) { await runSession(session); }
+  }, [describeSkipped, runSession, setUploadState]);
 
   return (
     <UploadStateContext

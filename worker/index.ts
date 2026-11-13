@@ -7,9 +7,11 @@ import { MAX_UPLOAD_BYTES } from '../src/photo/limits';
 
 const MB = 1024 * 1024;
 const FILE_NAME = /^(upload|photo)-[A-Za-z0-9]{8,32}(-[a-z]{2})?\.(jpe?g|png|webp)$/;
+const SHA256 = /^[0-9a-f]{64}$/;
 const handlers = { ...queries, ...mutations };
 const READS = new Set([
   'getStorageUrlsForPrefix',
+  'findUploadedHashes',
   'getRecipeTitleForData',
   'getRecipeDataForTitle',
   'getPhotosNeedingRecipeTitleCount',
@@ -65,9 +67,14 @@ async function putFile(req: Request, name: string, env: AppEnv, session: Session
   const contentType = imageType(bytes);
   if (!contentType) return error(415, 'Only WebP, JPEG and PNG are accepted');
 
+  const sha256 = req.headers.get('X-Original-Sha256');
+  const source = req.headers.get('X-Upload-Source');
   await env.BUCKET.put(name, bytes, { httpMetadata: { contentType } });
+  // A photo is a re-encoded copy of an upload, so it inherits the upload's hash.
   await env.DB.prepare(
-    'INSERT INTO files (name, base, owner_sub, bytes, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (name) DO UPDATE SET bytes = excluded.bytes',
+    `INSERT INTO files (name, base, owner_sub, bytes, created_at, sha256)
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT sha256 FROM files WHERE name = ? AND owner_sub = ?)))
+     ON CONFLICT (name) DO UPDATE SET bytes = excluded.bytes, sha256 = COALESCE(excluded.sha256, files.sha256)`,
   )
     .bind(
       name,
@@ -75,6 +82,9 @@ async function putFile(req: Request, name: string, env: AppEnv, session: Session
       session.sub,
       bytes.length,
       new Date().toISOString(),
+      sha256 && SHA256.test(sha256) ? sha256 : null,
+      source && FILE_NAME.test(source) ? source : null,
+      session.sub,
     )
     .run();
   return Response.json({ url: `/img/${name}` }, { status: 201 });
@@ -222,6 +232,8 @@ async function handle(req: Request, env: AppEnv, ctx: ExecutionContext) {
 
   const session = await getSession(req, env);
   if (!session) return error(401, 'Sign in required');
+  // Shared files reach the service worker; this only catches a share made before it installed.
+  if (pathname === '/share') return Response.redirect(`${url.origin}/`, 303);
   if (method !== 'GET' && req.headers.get('Origin') !== url.origin) {
     return error(403, 'Cross-origin request');
   }

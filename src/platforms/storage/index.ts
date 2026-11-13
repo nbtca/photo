@@ -20,6 +20,8 @@ export type StorageType =
 export type ClientUploadOptions = {
   onProgress?: (loaded: number, total: number) => void
   abortSignal?: AbortSignal
+  sha256?: string
+  sourceUrl?: string
 };
 
 const QUOTA_MESSAGE = '存储空间已用完，请先删除一些旧照片';
@@ -59,10 +61,14 @@ export const storageTypeFromUrl = (_url: string): StorageType =>
 const put = (
   file: Blob,
   fileName: string,
-  { onProgress, abortSignal }: ClientUploadOptions = {},
+  { onProgress, abortSignal, sha256, sourceUrl }: ClientUploadOptions = {},
 ) => new Promise<string>((resolve, reject) => {
   const xhr = new XMLHttpRequest();
   xhr.open('PUT', `/img/${fileName}`);
+  if (sha256) { xhr.setRequestHeader('X-Original-Sha256', sha256); }
+  if (sourceUrl) {
+    xhr.setRequestHeader('X-Upload-Source', sourceUrl.replace(/^\/img\//, ''));
+  }
   xhr.upload.onprogress = event => {
     if (event.lengthComputable) { onProgress?.(event.loaded, event.total); }
   };
@@ -99,8 +105,14 @@ export const uploadFileFromClient = async (
   options,
 );
 
-export const putFile = (file: Uint8Array, fileName: string) =>
-  put(new Blob([file as BlobPart]), fileName);
+export const putFile = (
+  file: Uint8Array,
+  fileName: string,
+  sourceUrl?: string,
+) => put(new Blob([file as BlobPart]), fileName, { sourceUrl });
+
+export const findUploadedHashes = (hashes: string[]) =>
+  rpc<string[]>('findUploadedHashes', hashes);
 
 export const deleteFile = async (url: string) => {
   const response = await fetch(url, { method: 'DELETE' });

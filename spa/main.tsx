@@ -8,7 +8,7 @@ import Footer from '@/app/Footer';
 import PhotoEscapeHandler from '@/photo/PhotoEscapeHandler';
 import ToasterWithThemes from '@/toast/ToasterWithThemes';
 import AdminUploadPanel from '@/admin/upload/AdminUploadPanel';
-import UploadDropZone from '@/admin/upload/UploadDropZone';
+import UploadReceiver from '@/admin/upload/UploadReceiver';
 import { useAppState } from '@/app/AppState';
 import { useSelectPhotosState } from '@/admin/select/SelectPhotosState';
 import { useEditTitlesState } from '@/admin/edit-titles/EditTitlesState';
@@ -69,7 +69,7 @@ function App() {
             </main>
             <Footer />
           </div>
-          <UploadDropZone />
+          <UploadReceiver />
           <PhotoEscapeHandler />
           <ToasterWithThemes />
         </StateProviders>

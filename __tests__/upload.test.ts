@@ -59,8 +59,9 @@ describe('partitionUploadFiles', () => {
 
 describe('countSkipReasons', () => {
   it('counts reasons in a fixed order and drops empty ones', () => {
-    expect(countSkipReasons(['failed', 'type', 'type'])).toEqual([
+    expect(countSkipReasons(['failed', 'duplicate', 'type', 'type'])).toEqual([
       { reason: 'type', count: 2 },
+      { reason: 'duplicate', count: 1 },
       { reason: 'failed', count: 1 },
     ]);
   });

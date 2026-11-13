@@ -6,17 +6,28 @@ import { FiUploadCloud } from 'react-icons/fi';
 import { useAppState } from '@/app/AppState';
 import { useAppText } from '@/i18n/state/client';
 import { useUploadState } from './UploadState';
-import { filesFromDataTransfer } from './files';
+import { filesFromDataTransfer, takeSharedFiles } from './files';
 
 const isEditable = (target: EventTarget | null) =>
   target instanceof HTMLElement &&
   (target.isContentEditable || Boolean(target.closest('input, textarea')));
 
-export default function UploadDropZone() {
+export default function UploadReceiver() {
   const { isUserSignedIn } = useAppState();
   const { uploadFiles, uploadState: { isUploading } } = useUploadState();
   const appText = useAppText();
   const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isUserSignedIn || !uploadFiles) { return; }
+    navigator.serviceWorker?.register('/sw.js');
+    const url = new URL(location.href);
+    if (url.searchParams.has('shared')) {
+      url.searchParams.delete('shared');
+      history.replaceState(history.state, '', url);
+      takeSharedFiles().then(uploadFiles);
+    }
+  }, [isUserSignedIn, uploadFiles]);
 
   useEffect(() => {
     if (!isUserSignedIn || !uploadFiles) { return; }
@@ -94,10 +105,9 @@ export default function UploadDropZone() {
       )}>
         <FiUploadCloud size={36} className="text-medium" />
         <div className="text-lg text-main">
-          {isUploading ? appText.admin.dropBusy : appText.admin.dropToUpload}
+          {isUploading ? appText.admin.dropToQueue : appText.admin.dropToUpload}
         </div>
-        {!isUploading &&
-          <div className="text-dim">{appText.admin.dropHint()}</div>}
+        <div className="text-dim">{appText.admin.dropHint()}</div>
       </div>
     </div>
   );

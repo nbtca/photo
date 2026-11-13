@@ -45,6 +45,7 @@ export const convertUploadToPhoto = async ({
   const url = await putFile(
     photo,
     `${generateRandomFileNameForPhoto()}.webp`,
+    uploadUrl,
   );
   await storeOptimizedPhotosForUrl(url, fileBytes);
   if (shouldDeleteOrigin) { await deleteFile(uploadUrl); }

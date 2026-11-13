@@ -9,6 +9,7 @@ const SKIP_TEXT_KEYS = {
   heic: 'skippedHeic',
   type: 'skippedType',
   size: 'skippedSize',
+  duplicate: 'skippedDuplicate',
   failed: 'skippedFailed',
 } as const satisfies Record<SkipReason, keyof I18N['admin']>;
 

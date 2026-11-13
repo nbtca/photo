@@ -33,3 +33,20 @@ export const filesFromDataTransfer = (dataTransfer: DataTransfer) => {
     .then(files => files.flat().sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true })));
 };
+
+const SHARED_CACHE = 'shared-photos';
+
+export const takeSharedFiles = async () => {
+  if (!('caches' in window)) { return []; }
+  const cache = await caches.open(SHARED_CACHE);
+  const files = await Promise.all((await cache.keys()).map(async request => {
+    const response = (await cache.match(request))!;
+    return new File(
+      [await response.blob()],
+      decodeURIComponent(response.headers.get('X-File-Name') ?? 'shared'),
+      { type: response.headers.get('Content-Type') ?? '' },
+    );
+  }));
+  await caches.delete(SHARED_CACHE);
+  return files;
+};

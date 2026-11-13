@@ -28,7 +28,7 @@ export const getUploadProgress = (
   return Math.min(1, (bytesCompleted + bytesLoaded) / bytesTotal);
 };
 
-export type SkipReason = 'heic' | 'type' | 'size' | 'failed';
+export type SkipReason = 'heic' | 'type' | 'size' | 'duplicate' | 'failed';
 
 type FileLike = Pick<File, 'name' | 'type' | 'size'>;
 
@@ -67,7 +67,7 @@ export const partitionUploadFiles = <T extends FileLike>(
 };
 
 export const countSkipReasons = (reasons: SkipReason[]) =>
-  (['heic', 'type', 'size', 'failed'] as const)
+  (['heic', 'type', 'size', 'duplicate', 'failed'] as const)
     .map(reason => ({
       reason,
       count: reasons.filter(r => r === reason).length,
