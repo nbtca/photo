@@ -55,6 +55,8 @@ export const generateAppTextState = (i18n: I18N) => {
     },
     admin: {
       ...i18n.admin,
+      pasteToUpload: (count: number) =>
+        i18n.admin.pasteToUpload.replace('{{count}}', String(count)),
       dropHint: () =>
         i18n.admin.dropHint.replace('{{size}}', UPLOAD_SIZE_LABEL),
       uploadSkipped: (reason: SkipReason, count: number) =>
