@@ -3,7 +3,6 @@ import AppGrid from '@/components/AppGrid';
 import { getUniqueTagsCached } from '@/photo/cache';
 import { getAlbumsWithMetaCached } from '@/album/cache';
 import AdminUploadsClient from '@/admin/AdminUploadsClient';
-import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 
 export const maxDuration = 60;
 
@@ -24,7 +23,6 @@ export default async function AdminUploadsPage() {
           urls,
           uniqueAlbums,
           uniqueTags,
-          shouldResize: !PRESERVE_ORIGINAL_UPLOADS,
         }} />}
     />
   );

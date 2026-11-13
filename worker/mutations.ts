@@ -373,6 +373,22 @@ export const mutations: Record<string, Handler> = {
     );
   },
 
+  // D1 binds at most 100 values per statement.
+  async findUploadedHashes(env, session, hashes: unknown) {
+    const list = strings(hashes, 1000).filter((hash) => /^[0-9a-f]{64}$/.test(hash));
+    const found: string[] = [];
+    for (let start = 0; start < list.length; start += 99) {
+      const chunk = list.slice(start, start + 99);
+      const rows = await all<{ sha256: string }>(
+        env,
+        `SELECT DISTINCT sha256 FROM files WHERE owner_sub = ? AND sha256 IN (${placeholders(chunk)})`,
+        [session.sub, ...chunk],
+      );
+      found.push(...rows.map(({ sha256 }) => sha256));
+    }
+    return found;
+  },
+
   async getStorageUrlsForPrefix(env, session, prefix = '') {
     const rows = await all<{ name: string; bytes: number; created_at: string }>(
       env,

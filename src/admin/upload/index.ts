@@ -1,12 +1,3 @@
-export interface UploadBlobArgs {
-  blob: Blob
-  extension?: string
-  hasMultipleUploads?: boolean
-  isLastBlob?: boolean
-  abortSignal?: AbortSignal
-  onProgress?: (loaded: number, total: number) => void
-}
-
 export interface UploadState {
   isUploading: boolean
   uploadError: string
@@ -36,3 +27,49 @@ export const getUploadProgress = (
     .reduce((sum, size) => sum + size, 0);
   return Math.min(1, (bytesCompleted + bytesLoaded) / bytesTotal);
 };
+
+export type SkipReason = 'heic' | 'type' | 'size' | 'duplicate' | 'failed';
+
+type FileLike = Pick<File, 'name' | 'type' | 'size'>;
+
+const extensionOf = (name: string) =>
+  name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
+
+export const uploadExtensionFor = ({ name, type }: FileLike) =>
+  type === 'image/png' || extensionOf(name) === 'png' ? 'png' : 'jpg';
+
+export const skipReasonFor = (
+  file: FileLike,
+  maxBytes: number,
+): SkipReason | undefined => {
+  const extension = extensionOf(file.name);
+  if (/^image\/hei[cf]$/.test(file.type) || /^hei[cf]$/.test(extension)) {
+    return 'heic';
+  }
+  const isAccepted = file.type
+    ? /^image\/(jpe?g|png)$/.test(file.type)
+    : /^(jpe?g|png)$/.test(extension);
+  if (!isAccepted) { return 'type'; }
+  if (file.size > maxBytes) { return 'size'; }
+};
+
+export const partitionUploadFiles = <T extends FileLike>(
+  files: T[],
+  maxBytes: number,
+) => {
+  const accepted: T[] = [];
+  const skipped: SkipReason[] = [];
+  for (const file of files) {
+    const reason = skipReasonFor(file, maxBytes);
+    if (reason) { skipped.push(reason); } else { accepted.push(file); }
+  }
+  return { accepted, skipped };
+};
+
+export const countSkipReasons = (reasons: SkipReason[]) =>
+  (['heic', 'type', 'size', 'duplicate', 'failed'] as const)
+    .map(reason => ({
+      reason,
+      count: reasons.filter(r => r === reason).length,
+    }))
+    .filter(({ count }) => count > 0);

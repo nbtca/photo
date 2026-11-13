@@ -24,8 +24,8 @@ export default function StateProviders({
     <AppStateProvider
       areAdminDebugToolsEnabled={ADMIN_DEBUG_TOOLS_ENABLED}
     >
-      <UploadStateProvider>
-        <AppTextProvider>
+      <AppTextProvider>
+        <UploadStateProvider>
           <SelectPhotosProvider>
             <EditTitlesProvider>
               <ThemeProvider attribute="class" defaultTheme={DEFAULT_THEME}>
@@ -39,8 +39,8 @@ export default function StateProviders({
               </ThemeProvider>
             </EditTitlesProvider>
           </SelectPhotosProvider>
-        </AppTextProvider>
-      </UploadStateProvider>
+        </UploadStateProvider>
+      </AppTextProvider>
     </AppStateProvider>
   );
 }

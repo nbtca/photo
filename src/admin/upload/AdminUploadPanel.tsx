@@ -9,11 +9,7 @@ import clsx from 'clsx/lite';
 import { IoCloseSharp } from 'react-icons/io5';
 import { useAppText } from '@/i18n/state/client';
 
-export default function AdminUploadPanel({
-  shouldResize,
-}: {
-  shouldResize: boolean
-}) {
+export default function AdminUploadPanel() {
   const {
     uploadInputRef,
     uploadState: {
@@ -23,8 +19,6 @@ export default function AdminUploadPanel({
     hideUploadPanel,
     cancelUpload,
     resetUploadState,
-    onUploadStart,
-    onUploadBlobReady,
   } = useUploadState();
 
   const appText = useAppText();
@@ -37,9 +31,6 @@ export default function AdminUploadPanel({
       <ImageInput
         ref={uploadInputRef}
         id="admin-upload-panel"
-        shouldResize={shouldResize}
-        onStart={onUploadStart}
-        onBlobReady={onUploadBlobReady}
         hidden
       />
       <StickyBanner

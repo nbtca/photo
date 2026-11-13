@@ -12,7 +12,6 @@ import PhotoUploadStatus from './PhotoUploadStatus';
 export default function PhotoUploadWithStatus({
   inputRef,
   inputId,
-  shouldResize,
   showStatusText = true,
   showButton = true,
   primary = true,
@@ -22,7 +21,6 @@ export default function PhotoUploadWithStatus({
 }: {
   inputRef?: RefObject<HTMLInputElement | null>
   inputId: string
-  shouldResize: boolean
   showStatusText?: boolean
   showButton?: boolean
   primary?: boolean
@@ -37,8 +35,6 @@ export default function PhotoUploadWithStatus({
     },
     setHideUploadPanel,
     cancelUpload,
-    onUploadStart,
-    onUploadBlobReady,
     isFinishingUpload,
   } = useUploadState();
 
@@ -68,9 +64,6 @@ export default function PhotoUploadWithStatus({
         <ImageInput
           ref={inputRef}
           id={inputId}
-          shouldResize={shouldResize}
-          onStart={onUploadStart}
-          onBlobReady={onUploadBlobReady}
           showButton={showButton}
           primary={primary}
         />

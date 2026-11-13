@@ -487,6 +487,39 @@ test('rejects unknown calls and malformed arguments', async () => {
   assert.equal((await post('insertPhoto', '[null]')).status, 400);
 });
 
+test('remembers original hashes per member until the file is gone', async () => {
+  const dave = (await signIn('dave')).session!;
+  const erin = (await signIn('erin')).session!;
+  const hash = 'a'.repeat(64);
+  const other = 'b'.repeat(64);
+  const upload = `upload-${randomId(16)}.webp`;
+  const photo = `photo-${randomId(16)}.webp`;
+  const put = (name: string, headers: Record<string, string>) =>
+    call(dave, `/img/${name}`, { method: 'PUT', body: WEBP, headers });
+
+  assert.equal((await put(upload, { 'X-Original-Sha256': hash })).status, 201);
+  assert.deepEqual(await rpc(dave, 'findUploadedHashes', [hash, other, 'not-a-hash']), [hash]);
+  assert.deepEqual(await rpc(erin, 'findUploadedHashes', [hash]), []);
+
+  assert.equal((await put(photo, { 'X-Upload-Source': upload })).status, 201);
+  assert.equal((await call(dave, `/img/${upload}`, { method: 'DELETE' })).status, 204);
+  assert.deepEqual(await rpc(dave, 'findUploadedHashes', [hash]), [hash]);
+
+  assert.equal((await call(dave, `/img/${photo}`, { method: 'DELETE' })).status, 204);
+  assert.deepEqual(await rpc(dave, 'findUploadedHashes', [hash]), []);
+
+  const ignored = `upload-${randomId(16)}.webp`;
+  assert.equal((await put(ignored, { 'X-Original-Sha256': 'XYZ' })).status, 201);
+  assert.deepEqual(await rpc(dave, 'findUploadedHashes', ['XYZ']), []);
+});
+
+test('sends shares that miss the service worker back to the app', async () => {
+  const dave = (await signIn('dave')).session!;
+  const res = await call(dave, '/share', { method: 'POST', body: new FormData(), redirect: 'manual' });
+  assert.equal(res.status, 303);
+  assert.equal(res.headers.get('Location'), `${BASE}/`);
+});
+
 test('rejects invalid files', async () => {
   const alice = (await signIn('alice')).session!;
   const put = (name: string, body: BodyInit) => call(alice, `/img/${name}`, { method: 'PUT', body });
