@@ -6,11 +6,7 @@ import clsx from 'clsx/lite';
 import PhotoUploadWithStatus from '@/photo/PhotoUploadWithStatus';
 import { useAppText } from '@/i18n/state/client';
 
-export default function SignInOrUploadClient({
-  shouldResize,
-}: {
-  shouldResize: boolean
-}) {
+export default function SignInOrUploadClient() {
   const { isUserSignedIn, isCheckingAuth } = useAppState();
 
   const appText = useAppText();
@@ -38,7 +34,6 @@ export default function SignInOrUploadClient({
       {isUserSignedIn === true &&
         <PhotoUploadWithStatus
           inputId="admin-cta"
-          shouldResize={shouldResize}
           showStatusText={false}
         />}
     </div>

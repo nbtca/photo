@@ -8,10 +8,10 @@ import Footer from '@/app/Footer';
 import PhotoEscapeHandler from '@/photo/PhotoEscapeHandler';
 import ToasterWithThemes from '@/toast/ToasterWithThemes';
 import AdminUploadPanel from '@/admin/upload/AdminUploadPanel';
+import UploadDropZone from '@/admin/upload/UploadDropZone';
 import { useAppState } from '@/app/AppState';
 import { useSelectPhotosState } from '@/admin/select/SelectPhotosState';
 import { useEditTitlesState } from '@/admin/edit-titles/EditTitlesState';
-import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { LAYOUT_CLASS_SHELL_X } from '@/app/layout-metrics';
 import { revalidatePath } from 'next/cache';
 import { Page, RouterProvider, preloadRoute } from '@spa/router';
@@ -62,15 +62,14 @@ function App() {
             <Suspense><Nav /></Suspense>
             <main className="grow">
               <div className={clsx('mb-5', 'space-y-5')}>
-                <AdminUploadPanel
-                  shouldResize={!PRESERVE_ORIGINAL_UPLOADS}
-                />
+                <AdminUploadPanel />
                 <Panels />
                 <Suspense><Page /></Suspense>
               </div>
             </main>
             <Footer />
           </div>
+          <UploadDropZone />
           <PhotoEscapeHandler />
           <ToasterWithThemes />
         </StateProviders>

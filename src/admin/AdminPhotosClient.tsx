@@ -24,7 +24,6 @@ export default function AdminPhotosClient({
   photosCount,
   photosCountNeedsSync,
   blobPhotoUrls,
-  shouldResize,
   infiniteScrollInitial,
   infiniteScrollMultiple,
   timezone,
@@ -34,7 +33,6 @@ export default function AdminPhotosClient({
   photosCount: number
   photosCountNeedsSync: number
   blobPhotoUrls: StorageListResponse
-  shouldResize: boolean
   infiniteScrollInitial: number
   infiniteScrollMultiple: number
   timezone: Timezone
@@ -91,7 +89,6 @@ export default function AdminPhotosClient({
                 </PathLoaderButton>}
               <PhotoUploadWithStatus
                 inputId="admin-photos"
-                shouldResize={shouldResize}
                 className="flex-row-reverse min-w-0"
                 expandStatus={isUploading}
               />

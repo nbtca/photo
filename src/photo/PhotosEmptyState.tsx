@@ -1,6 +1,5 @@
 import Container from '@/components/Container';
 import AppGrid from '@/components/AppGrid';
-import { PRESERVE_ORIGINAL_UPLOADS } from '@/app/config';
 import { clsx } from 'clsx/lite';
 import { HiOutlinePhotograph } from 'react-icons/hi';
 import SignInOrUploadClient from '@/admin/SignInOrUploadClient';
@@ -31,9 +30,7 @@ export default async function PhotosEmptyState() {
             {appText.onboarding.setupComplete}
           </div>
           <div className="max-w-md text-center space-y-6">
-            <SignInOrUploadClient
-              shouldResize={!PRESERVE_ORIGINAL_UPLOADS}
-            />
+            <SignInOrUploadClient />
           </div>
         </Container>
       }

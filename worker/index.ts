@@ -3,9 +3,9 @@ import { MAX_BATCH } from './batch';
 import { cached, invalidate, pruneCache } from './cache';
 import { mutations } from './mutations';
 import { cacheScope, queries } from './query';
+import { MAX_UPLOAD_BYTES } from '../src/photo/limits';
 
 const MB = 1024 * 1024;
-const MAX_FILE_BYTES = 12 * MB;
 const FILE_NAME = /^(upload|photo)-[A-Za-z0-9]{8,32}(-[a-z]{2})?\.(jpe?g|png|webp)$/;
 const handlers = { ...queries, ...mutations };
 const READS = new Set([
@@ -58,10 +58,10 @@ async function putFile(req: Request, name: string, env: AppEnv, session: Session
   const existing = await findFile(env, name);
   if (existing && existing.owner_sub !== session.sub) return error(403, 'Not your file');
   if ((await usage(env, session)).full) return error(507, 'Storage quota reached');
-  if (Number(req.headers.get('Content-Length')) > MAX_FILE_BYTES) return error(413, 'Image too large');
+  if (Number(req.headers.get('Content-Length')) > MAX_UPLOAD_BYTES) return error(413, 'Image too large');
 
   const bytes = new Uint8Array(await req.arrayBuffer());
-  if (bytes.length > MAX_FILE_BYTES) return error(413, 'Image too large');
+  if (bytes.length > MAX_UPLOAD_BYTES) return error(413, 'Image too large');
   const contentType = imageType(bytes);
   if (!contentType) return error(415, 'Only WebP, JPEG and PNG are accepted');
 

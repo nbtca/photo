@@ -1,5 +1,16 @@
 import { TEMPLATE_REPO_NAME } from '@/app/config';
 import { I18N } from '..';
+import type { SkipReason } from '@/admin/upload';
+import { MAX_UPLOAD_BYTES } from '@/photo/limits';
+
+const UPLOAD_SIZE_LABEL = `${MAX_UPLOAD_BYTES / 1024 / 1024} MB`;
+
+const SKIP_TEXT_KEYS = {
+  heic: 'skippedHeic',
+  type: 'skippedType',
+  size: 'skippedSize',
+  failed: 'skippedFailed',
+} as const satisfies Record<SkipReason, keyof I18N['admin']>;
 
 export type AppTextState = ReturnType<typeof generateAppTextState>;
 
@@ -43,6 +54,12 @@ export const generateAppTextState = (i18n: I18N) => {
     },
     admin: {
       ...i18n.admin,
+      dropHint: () =>
+        i18n.admin.dropHint.replace('{{size}}', UPLOAD_SIZE_LABEL),
+      uploadSkipped: (reason: SkipReason, count: number) =>
+        i18n.admin[SKIP_TEXT_KEYS[reason]]
+          .replace('{{count}}', String(count))
+          .replace('{{size}}', UPLOAD_SIZE_LABEL),
       deleteConfirm: (photoTitle: string) =>
         i18n.admin.deleteConfirm.replace('{{photoTitle}}', photoTitle),
       setVisibilityPlaceholder: (quantity: string) =>

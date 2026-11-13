@@ -24,12 +24,10 @@ export default function AdminUploadsClient({
   urls,
   uniqueTags,
   uniqueAlbums,
-  shouldResize,
 }: {
   urls: StorageListResponse
   uniqueTags: Tags
   uniqueAlbums: Albums
-  shouldResize: boolean
 }) {
   const appText = useAppText();
 
@@ -60,7 +58,6 @@ export default function AdminUploadsClient({
         hideLabel={isUploading}
         accessory={<PhotoUploadWithStatus
           inputId="admin-uploads"
-          shouldResize={shouldResize}
           className="flex-row-reverse min-w-0"
           expandStatus={isUploading}
           primary={urlAddStatuses.length === 0}
