@@ -218,20 +218,25 @@ export const addUploadAction = async (args: Parameters<typeof addUpload>[0]) =>
 export const addUploadsAction = async ({
   uploadUrls,
   uploadTitles,
+  uploadTakenAts,
   shouldRevalidateAllKeysAndPaths = true,
   albumTitles,
   tags,
   favorite,
   hidden,
   excludeFromFeeds,
-  takenAtLocal,
-  takenAtNaiveLocal,
 }: Omit<
   Parameters<typeof addUpload>[0],
-  'url' | 'onStreamUpdate' | 'onFinish' | 'albumIds'
+  | 'url'
+  | 'onStreamUpdate'
+  | 'onFinish'
+  | 'albumIds'
+  | 'takenAtLocal'
+  | 'takenAtNaiveLocal'
 > & {
   uploadUrls: string[]
   uploadTitles: string[]
+  uploadTakenAts: { takenAtLocal: string, takenAtNaiveLocal: string }[]
   shouldRevalidateAllKeysAndPaths?: boolean
   albumTitles?: string[]
 }) =>
@@ -275,8 +280,7 @@ export const addUploadsAction = async ({
             favorite,
             hidden,
             excludeFromFeeds,
-            takenAtLocal,
-            takenAtNaiveLocal,
+            ...uploadTakenAts[index],
             onStreamUpdate: streamUpdate,
             onFinish: () => {
               addedUploadUrls.push(url);

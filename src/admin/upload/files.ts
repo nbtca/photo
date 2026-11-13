@@ -5,9 +5,20 @@ const readBatch = (reader: FileSystemDirectoryReader) =>
   new Promise<FileSystemEntry[]>((resolve, reject) =>
     reader.readEntries(resolve, reject));
 
-const filesFromEntry = async (entry: FileSystemEntry): Promise<File[]> => {
+const folders = new WeakMap<File, string>();
+
+export const folderOf = (file: File) => folders.get(file);
+
+const filesFromEntry = async (
+  entry: FileSystemEntry,
+  folder?: string,
+): Promise<File[]> => {
   if (entry.name.startsWith('.')) { return []; }
-  if (entry.isFile) { return [await readFile(entry as FileSystemFileEntry)]; }
+  if (entry.isFile) {
+    const file = await readFile(entry as FileSystemFileEntry);
+    if (folder) { folders.set(file, folder); }
+    return [file];
+  }
   if (!entry.isDirectory) { return []; }
   const reader = (entry as FileSystemDirectoryEntry).createReader();
   const entries: FileSystemEntry[] = [];
@@ -17,7 +28,8 @@ const filesFromEntry = async (entry: FileSystemEntry): Promise<File[]> => {
     entries.push(...batch);
     batch = await readBatch(reader);
   }
-  return (await Promise.all(entries.map(filesFromEntry))).flat();
+  return (await Promise.all(entries.map(child =>
+    filesFromEntry(child, folder ?? entry.name)))).flat();
 };
 
 // Entries must be read synchronously inside the drop handler:
@@ -29,7 +41,8 @@ export const filesFromDataTransfer = (dataTransfer: DataTransfer) => {
   if (entries.some(entry => !entry)) {
     return Promise.resolve(Array.from(dataTransfer.files));
   }
-  return Promise.all((entries as FileSystemEntry[]).map(filesFromEntry))
+  return Promise.all((entries as FileSystemEntry[])
+    .map(entry => filesFromEntry(entry)))
     .then(files => files.flat().sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true })));
 };
@@ -44,7 +57,11 @@ export const takeSharedFiles = async () => {
     return new File(
       [await response.blob()],
       decodeURIComponent(response.headers.get('X-File-Name') ?? 'shared'),
-      { type: response.headers.get('Content-Type') ?? '' },
+      {
+        type: response.headers.get('Content-Type') ?? '',
+        lastModified: Number(response.headers.get('X-Last-Modified'))
+          || Date.now(),
+      },
     );
   }));
   await caches.delete(SHARED_CACHE);

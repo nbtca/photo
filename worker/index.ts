@@ -8,6 +8,18 @@ import { MAX_UPLOAD_BYTES } from '../src/photo/limits';
 const MB = 1024 * 1024;
 const FILE_NAME = /^(upload|photo)-[A-Za-z0-9]{8,32}(-[a-z]{2})?\.(jpe?g|png|webp)$/;
 const SHA256 = /^[0-9a-f]{64}$/;
+
+const originText = (req: Request, header: string) => {
+  try {
+    return decodeURIComponent(req.headers.get(header) ?? '').trim().slice(0, 255) || null;
+  } catch {
+    return null;
+  }
+};
+const originDate = (req: Request) => {
+  const date = new Date(req.headers.get('X-Original-Modified') ?? '');
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+};
 const handlers = { ...queries, ...mutations };
 const READS = new Set([
   'getStorageUrlsForPrefix',
@@ -72,8 +84,8 @@ async function putFile(req: Request, name: string, env: AppEnv, session: Session
   await env.BUCKET.put(name, bytes, { httpMetadata: { contentType } });
   // A photo is a re-encoded copy of an upload, so it inherits the upload's hash.
   await env.DB.prepare(
-    `INSERT INTO files (name, base, owner_sub, bytes, created_at, sha256)
-     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT sha256 FROM files WHERE name = ? AND owner_sub = ?)))
+    `INSERT INTO files (name, base, owner_sub, bytes, created_at, sha256, original_name, folder, modified_at)
+     VALUES (?, ?, ?, ?, ?, COALESCE(?, (SELECT sha256 FROM files WHERE name = ? AND owner_sub = ?)), ?, ?, ?)
      ON CONFLICT (name) DO UPDATE SET bytes = excluded.bytes, sha256 = COALESCE(excluded.sha256, files.sha256)`,
   )
     .bind(
@@ -85,6 +97,9 @@ async function putFile(req: Request, name: string, env: AppEnv, session: Session
       sha256 && SHA256.test(sha256) ? sha256 : null,
       source && FILE_NAME.test(source) ? source : null,
       session.sub,
+      originText(req, 'X-Original-Name'),
+      originText(req, 'X-Original-Folder'),
+      originDate(req),
     )
     .run();
   return Response.json({ url: `/img/${name}` }, { status: 201 });

@@ -15,6 +15,7 @@ import { Films } from '@/film';
 import { Albums } from '@/album';
 import { Cameras } from '@/camera';
 import { Lenses } from '@/lens';
+import { useAppText } from '@/i18n/state/client';
 
 export default function UploadPageClient({
   blobId,
@@ -26,6 +27,7 @@ export default function UploadPageClient({
   uniqueCameras,
   uniqueLenses,
   shouldStripGpsData,
+  albumTitles,
 }: {
   blobId?: string
   formDataFromExif: Partial<PhotoFormData>
@@ -36,7 +38,10 @@ export default function UploadPageClient({
   uniqueCameras: Cameras
   uniqueLenses: Lenses
   shouldStripGpsData?: boolean
+  albumTitles?: string[]
 }) {
+  const appText = useAppText();
+
   const {
     pending,
     setIsPending,
@@ -53,7 +58,7 @@ export default function UploadPageClient({
   return (
     <AdminChildPage
       backPath={PATH_ADMIN_UPLOADS}
-      backLabel="Uploads"
+      backLabel={appText.admin.uploadPlural}
       breadcrumb={pending && updatedTitle
         ? updatedTitle
         : blobId}
@@ -69,6 +74,7 @@ export default function UploadPageClient({
         uniqueCameras={uniqueCameras}
         uniqueLenses={uniqueLenses}
         shouldStripGpsData={shouldStripGpsData}
+        photoAlbumTitles={albumTitles}
         onTitleChange={setUpdatedTitle}
         onFormStatusChange={setIsPending}
       />

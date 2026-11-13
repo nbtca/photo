@@ -20,6 +20,7 @@ self.addEventListener('fetch', event => {
         headers: {
           'Content-Type': file.type,
           'X-File-Name': encodeURIComponent(file.name),
+          'X-Last-Modified': String(file.lastModified),
         },
       }),
     )));

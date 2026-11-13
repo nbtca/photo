@@ -55,6 +55,16 @@ export const generateAppTextState = (i18n: I18N) => {
     },
     admin: {
       ...i18n.admin,
+      uploadsPending: (count: number) =>
+        i18n.admin.uploadsPending.replace('{{count}}', String(count)),
+      uploadsAddAll: (count: number) =>
+        i18n.admin.uploadsAddAll.replace('{{count}}', String(count)),
+      uploadsAdding: (index: number, count: number) =>
+        i18n.admin.uploadsAdding
+          .replace('{{index}}', String(index))
+          .replace('{{count}}', String(count)),
+      uploadsDeleteConfirm: (count: number) =>
+        i18n.admin.uploadsDeleteConfirm.replace('{{count}}', String(count)),
       pasteToUpload: (count: number) =>
         i18n.admin.pasteToUpload.replace('{{count}}', String(count)),
       dropHint: () =>

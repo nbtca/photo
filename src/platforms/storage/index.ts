@@ -7,6 +7,15 @@ export type StorageListItem = {
   fileName: string
   uploadedAt?: Date
   size?: string
+  originalName?: string
+  folder?: string
+  modifiedAt?: Date
+};
+
+export type UploadOrigin = {
+  name: string
+  folder?: string
+  modifiedAt: number
 };
 
 export type StorageListResponse = StorageListItem[];
@@ -22,6 +31,7 @@ export type ClientUploadOptions = {
   abortSignal?: AbortSignal
   sha256?: string
   sourceUrl?: string
+  origin?: UploadOrigin
 };
 
 const QUOTA_MESSAGE = '存储空间已用完，请先删除一些旧照片';
@@ -61,11 +71,30 @@ export const storageTypeFromUrl = (_url: string): StorageType =>
 const put = (
   file: Blob,
   fileName: string,
-  { onProgress, abortSignal, sha256, sourceUrl }: ClientUploadOptions = {},
+  {
+    onProgress,
+    abortSignal,
+    sha256,
+    sourceUrl,
+    origin,
+  }: ClientUploadOptions = {},
 ) => new Promise<string>((resolve, reject) => {
   const xhr = new XMLHttpRequest();
   xhr.open('PUT', `/img/${fileName}`);
   if (sha256) { xhr.setRequestHeader('X-Original-Sha256', sha256); }
+  if (origin) {
+    xhr.setRequestHeader('X-Original-Name', encodeURIComponent(origin.name));
+    if (origin.folder) {
+      xhr.setRequestHeader(
+        'X-Original-Folder',
+        encodeURIComponent(origin.folder),
+      );
+    }
+    xhr.setRequestHeader(
+      'X-Original-Modified',
+      new Date(origin.modifiedAt).toISOString(),
+    );
+  }
   if (sourceUrl) {
     xhr.setRequestHeader('X-Upload-Source', sourceUrl.replace(/^\/img\//, ''));
   }
@@ -120,14 +149,32 @@ export const deleteFile = async (url: string) => {
 };
 
 export const getStorageUrlsForPrefix = async (prefix = '') =>
-  rpc<{ url: string, fileName: string, uploadedAt: string, bytes: number }[]>(
+  rpc<{
+    url: string
+    fileName: string
+    uploadedAt: string
+    bytes: number
+    originalName: string | null
+    folder: string | null
+    modifiedAt: string | null
+  }[]>(
     'getStorageUrlsForPrefix',
     prefix,
   ).then((files): StorageListResponse =>
-    files.map(({ uploadedAt, bytes, ...file }) => ({
+    files.map(({
+      uploadedAt,
+      bytes,
+      originalName,
+      folder,
+      modifiedAt,
+      ...file
+    }) => ({
       ...file,
       uploadedAt: new Date(uploadedAt),
       size: formatBytes(bytes),
+      originalName: originalName ?? undefined,
+      folder: folder ?? undefined,
+      modifiedAt: modifiedAt ? new Date(modifiedAt) : undefined,
     })));
 
 export const deleteFilesWithPrefix = async (prefix: string) => {

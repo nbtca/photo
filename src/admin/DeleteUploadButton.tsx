@@ -4,6 +4,7 @@ import { deleteUploadsAction } from '@/photo/actions';
 import DeleteButton from './DeleteButton';
 import { ComponentProps, useState } from 'react';
 import LoaderButton from '@/components/primitives/LoaderButton';
+import { useAppText } from '@/i18n/state/client';
 
 export default function DeleteUploadButton({
   urls,
@@ -19,12 +20,14 @@ export default function DeleteUploadButton({
 } & ComponentProps<typeof LoaderButton>) {
   const [isDeleting, setIsDeleting] = useState(false);
 
+  const appText = useAppText();
+
   return (
     <DeleteButton
       {...props}
       confirmText={urls.length === 1
-        ? 'Are you sure you want to delete this upload?'
-        : `Are you sure you want to delete all ${urls.length} uploads?`}
+        ? appText.admin.uploadDeleteConfirm
+        : appText.admin.uploadsDeleteConfirm(urls.length)}
       onClick={() => {
         onDeleteStart?.();
         setIsDeleting(true);

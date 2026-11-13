@@ -513,6 +513,31 @@ test('remembers original hashes per member until the file is gone', async () => 
   assert.deepEqual(await rpc(dave, 'findUploadedHashes', ['XYZ']), []);
 });
 
+test('keeps where an upload came from', async () => {
+  const frank = (await signIn('frank')).session!;
+  const named = `upload-${randomId(16)}.webp`;
+  const garbled = `upload-${randomId(16)}.webp`;
+  const put = (name: string, headers: Record<string, string>) =>
+    call(frank, `/img/${name}`, { method: 'PUT', body: WEBP, headers });
+  assert.equal((await put(named, {
+    'X-Original-Name': encodeURIComponent('招新合影.jpg'),
+    'X-Original-Folder': encodeURIComponent('2026-10-18 维修日'),
+    'X-Original-Modified': '2026-10-18T06:35:22.000Z',
+  })).status, 201);
+  assert.equal((await put(garbled, {
+    'X-Original-Name': '%E0%A4%A',
+    'X-Original-Modified': 'yesterday',
+  })).status, 201);
+  const uploads = await rpc<any[]>(frank, 'getStorageUrlsForPrefix', 'upload-');
+  const byName = Object.fromEntries(uploads.map((upload) => [upload.fileName, upload]));
+  assert.equal(byName[named].originalName, '招新合影.jpg');
+  assert.equal(byName[named].folder, '2026-10-18 维修日');
+  assert.equal(byName[named].modifiedAt, '2026-10-18T06:35:22.000Z');
+  assert.equal(byName[garbled].originalName, null);
+  assert.equal(byName[garbled].folder, null);
+  assert.equal(byName[garbled].modifiedAt, null);
+});
+
 test('sends shares that miss the service worker back to the app', async () => {
   const dave = (await signIn('dave')).session!;
   const res = await call(dave, '/share', { method: 'POST', body: new FormData(), redirect: 'manual' });

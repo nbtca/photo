@@ -12,6 +12,8 @@ import { useAppText } from '@/i18n/state/client';
 import { useUploadState } from '@/admin/upload/UploadState';
 import EmptyState from '@/components/EmptyState';
 import IconUpload from '@/components/icons/IconUpload';
+import { suggestAlbum, suggestTitle } from '@/admin/upload';
+import { generateLocalTakenAt } from '@/utility/date';
 
 export type UrlAddStatus = StorageListItem & {
   status?: 'waiting' | 'adding' | 'added'
@@ -19,6 +21,12 @@ export type UrlAddStatus = StorageListItem & {
   draftTitle?: string
   progress?: number
 };
+
+const withSuggestedTitles = (urls: StorageListResponse): UrlAddStatus[] =>
+  urls.map(upload => ({
+    ...upload,
+    draftTitle: suggestTitle(upload.originalName),
+  }));
 
 export default function AdminUploadsClient({
   urls,
@@ -33,18 +41,23 @@ export default function AdminUploadsClient({
 
   const { uploadState: { isUploading } } = useUploadState();
 
-  const [urlAddStatuses, setUrlAddStatuses] = useState<UrlAddStatus[]>(urls);
+  const [urlAddStatuses, setUrlAddStatuses] =
+    useState(() => withSuggestedTitles(urls));
 
   useEffect(() => {
     // Overwrite local state when server state changes
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setUrlAddStatuses(urls);
+    setUrlAddStatuses(withSuggestedTitles(urls));
   }, [urls]);
 
   const uploadUrls = useMemo(() => urlAddStatuses
     .map(({ url }) => url), [urlAddStatuses]);
   const uploadTitles = useMemo(() => urlAddStatuses
     .map(({ draftTitle }) => draftTitle ?? ''), [urlAddStatuses]);
+  const uploadTakenAts = useMemo(() => urlAddStatuses
+    .map(({ modifiedAt }) => generateLocalTakenAt(modifiedAt))
+  , [urlAddStatuses]);
+  const suggestedAlbum = useMemo(() => suggestAlbum(urls), [urls]);
 
   const [isAdding, setIsAdding] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -67,19 +80,20 @@ export default function AdminUploadsClient({
         ? <EmptyState icon={<IconUpload />}>
           <div className="max-w-xs text-center space-y-1">
             <div className="font-bold">
-              No uploads
+              {appText.admin.uploadsEmpty}
             </div>
             <div className="text-dim">
-              Uploaded files that haven&apos;t been added to your library
-              will show up here
+              {appText.admin.uploadsEmptyNote}
             </div>
           </div>
         </EmptyState>
         : <>
           {(urls.length > 1 || isAdding) &&
-            <AdminBatchUploadActions {...{
+            <AdminBatchUploadActions key={suggestedAlbum} {...{
               uploadUrls,
               uploadTitles,
+              uploadTakenAts,
+              suggestedAlbum,
               uniqueAlbums,
               uniqueTags,
               isAdding,

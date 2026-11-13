@@ -1,9 +1,7 @@
 import LoaderButton from '@/components/primitives/LoaderButton';
 import { addUploadAction } from '@/photo/actions';
-import {
-  generateLocalNaivePostgresString,
-  generateLocalPostgresString,
-} from '@/utility/date';
+import { generateLocalTakenAt } from '@/utility/date';
+import { useAppText } from '@/i18n/state/client';
 import { PATH_ADMIN_PHOTOS } from '@/app/path';
 import { useRouter } from 'next/navigation';
 import { ComponentProps, useState } from 'react';
@@ -12,6 +10,7 @@ import IconAddUpload from '@/components/icons/IconAddUpload';
 export default function AddUploadButton({
   url,
   title,
+  takenAtFallback,
   onAddStart,
   onAddFinish,
   shouldRedirectToAdminPhotos,
@@ -19,11 +18,14 @@ export default function AddUploadButton({
 }: {
   url: string
   title?: string
+  takenAtFallback?: Date
   onAddStart?: () => void
   onAddFinish?: (success: boolean) => void
   shouldRedirectToAdminPhotos: boolean
 } & ComponentProps<typeof LoaderButton>) {
   const router = useRouter();
+
+  const appText = useAppText();
 
   const [isAddingLocal, setIsAddingLocal] = useState(false);
 
@@ -37,8 +39,7 @@ export default function AddUploadButton({
         addUploadAction({
           url,
           title,
-          takenAtLocal: generateLocalPostgresString(),
-          takenAtNaiveLocal: generateLocalNaivePostgresString(),
+          ...generateLocalTakenAt(takenAtFallback),
           shouldRevalidateAllKeysAndPaths: true,
         })
           .then(() => {
@@ -55,10 +56,10 @@ export default function AddUploadButton({
           });
       }}
       isLoading={isAddingLocal}
-      tooltip="Add directly"
+      tooltip={appText.admin.uploadAddTooltip}
       hideText="never"
     >
-      Add
+      {appText.admin.uploadAdd}
     </LoaderButton>
   );
 }
