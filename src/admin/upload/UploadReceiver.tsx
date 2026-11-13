@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { clsx } from 'clsx/lite';
 import { FiUploadCloud } from 'react-icons/fi';
+import { toast } from 'sonner';
 import { useAppState } from '@/app/AppState';
 import { useAppText } from '@/i18n/state/client';
 import { useUploadState } from './UploadState';
@@ -66,10 +67,19 @@ export default function UploadReceiver() {
       filesFromDataTransfer(event.dataTransfer!).then(uploadFiles);
     };
     const onPaste = (event: ClipboardEvent) => {
-      const files = Array.from(event.clipboardData?.files ?? []);
-      if (files.length === 0 || isEditable(event.target)) { return; }
+      const images = Array.from(event.clipboardData?.files ?? [])
+        .filter(file => file.type.startsWith('image/'));
+      if (images.length === 0 || isEditable(event.target)) { return; }
       event.preventDefault();
-      uploadFiles(files);
+      toast(appText.admin.pasteToUpload(images.length), {
+        id: 'paste-upload',
+        icon: <FiUploadCloud size={16} className="text-medium" />,
+        duration: 8000,
+        action: {
+          label: appText.admin.upload,
+          onClick: () => uploadFiles(images),
+        },
+      });
     };
 
     const listeners = [
@@ -86,7 +96,7 @@ export default function UploadReceiver() {
       window.addEventListener(type, listener as EventListener));
     return () => listeners.forEach(([type, listener]) =>
       window.removeEventListener(type, listener as EventListener));
-  }, [isUserSignedIn, uploadFiles]);
+  }, [appText, isUserSignedIn, uploadFiles]);
 
   return (
     <div

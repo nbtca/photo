@@ -133,6 +133,7 @@ export const TEXT = {
     dropToUpload: 'Drop to upload',
     dropHint: 'JPG or PNG up to {{size}} each, folders included',
     dropToQueue: 'Drop to add to the upload queue',
+    pasteToUpload: 'Upload {{count}} images from the clipboard?',
     skippedHeic: '{{count}} HEIC photos skipped, export them as JPG first',
     skippedType: '{{count}} files skipped, not JPG or PNG',
     skippedSize: '{{count}} photos skipped, larger than {{size}}',

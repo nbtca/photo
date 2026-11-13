@@ -134,6 +134,7 @@ export const TEXT: I18N = {
     dropToUpload: '松开即可上传',
     dropHint: '支持 JPG 和 PNG，单张不超过 {{size}}，也可以拖入整个文件夹',
     dropToQueue: '松开即可加入上传队列',
+    pasteToUpload: '剪贴板里有 {{count}} 张图片，要上传吗？',
     skippedHeic: '{{count}} 张 HEIC 照片暂不支持，请先导出为 JPG',
     skippedType: '{{count}} 个文件不是 JPG 或 PNG，已跳过',
     skippedSize: '{{count}} 张照片超过 {{size}}，已跳过',
